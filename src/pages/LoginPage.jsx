@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 
 import Alert from "../components/Alert";
 import MainLayout from "../components/MainLayout";
@@ -95,6 +95,15 @@ export default function LoginPage() {
                         {loading ? "Logging in..." : "Login"}
                     </button>
                 </form>
+
+                <div className="mt-3 text-center">
+                    <p>
+                        Don't have an account?{" "}
+                        <Link to="/register" className="text-decoration-none">
+                            Register here
+                        </Link>
+                    </p>
+                </div>
             </div>
         </MainLayout>
     );

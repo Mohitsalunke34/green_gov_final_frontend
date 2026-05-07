@@ -15,8 +15,17 @@ export const loginAdmin = async (username, password) => {
     return res.data;
 }
 
-// Citizen/officer registration
+// Citizen/Business registration
 export const registerUser = async (payload) => {
     const res = await api.post("/api/auth/register", payload);
+    return res.data;
+}
+
+// Officer registration (requires admin approval)
+export const registerOfficer = async (payload) => {
+    const res = await api.post("/api/auth/register", {
+        ...payload,
+        primaryRole: "OFFICER"
+    });
     return res.data;
 }

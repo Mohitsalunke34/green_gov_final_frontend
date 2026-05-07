@@ -10,6 +10,8 @@ export default function Sidebar() {
         { path: "/applications", label: "📝 Applications", icon: "" },
         { path: "/projects", label: "🏗️ Projects", icon: "" },
         { path: "/incentives", label: "💰 Incentives", icon: "" },
+        { path: "/compliance", label: "✓ Compliance", icon: "" },
+        { path: "/audit", label: "🔍 Audit", icon: "" },
         { path: "/profile", label: "👤 Profile", icon: "" },
     ];
 
