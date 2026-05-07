@@ -27,7 +27,8 @@ api.interceptors.response.use(
         if (error.response?.status === 401) // If browser response is unauthorized
         {
             localStorage.removeItem("token"); //This token is no longer valid. Remove it from browser memory.
-            window.location.href = "/login";
+            // eslint-disable-next-line no-restricted-globals
+            location.href = "/login";
         }
         return Promise.reject(error);
     }

@@ -1,6 +1,13 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import MainLayout from "./components/MainLayout";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
+import ProgramsPage from "./pages/ProgramsPage";
+import ApplicationsPage from "./pages/ApplicationsPage";
+import ProjectsPage from "./pages/ProjectsPage";
+import IncentivesPage from "./pages/IncentivesPage";
+import ProfilePage from "./pages/ProfilePage";
+import NotFoundPage from "./pages/NotFoundPage";
 import PrivateRoute from "./auth/PrivateRoute";
 
 function App() {
@@ -12,18 +19,75 @@ function App() {
       {/* Public route */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected route */}
+      {/* Protected routes with MainLayout */}
       <Route
         path="/dashboard"
         element={
           <PrivateRoute>
-            <DashboardPage />
+            <MainLayout>
+              <DashboardPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/programs"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ProgramsPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/applications"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ApplicationsPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/projects"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ProjectsPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/incentives"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <IncentivesPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/profile"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ProfilePage />
+            </MainLayout>
           </PrivateRoute>
         }
       />
 
       {/* Fallback */}
-      <Route path="*" element={<h3>Page Not Found</h3>} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

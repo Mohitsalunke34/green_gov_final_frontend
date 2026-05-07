@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import PageContainer from "../components/layout/PageContainer";
-import AlertMessage from "../components/UI/AlertMessage";
+import Alert from "../components/Alert";
+import MainLayout from "../components/MainLayout";
 
 import { loginUser, loginAdmin } from "../api/authApi";
 import { useAuth } from "../auth/AuthContext";
@@ -40,52 +40,62 @@ export default function LoginPage() {
     };
 
     return (
-        <PageContainer title="Login">
-            <AlertMessage message={error} />
+        <MainLayout>
+            <div className="container mt-4" style={{ maxWidth: "420px" }}>
+                <h3 className="mb-3">Login</h3>
 
-            <form onSubmit={handleSubmit}>
-                <div className="mb-3">
-                    <label className="form-label">Username</label>
-                    <input
-                        className="form-control"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                    />
-                </div>
+                {/* ✅ New Alert (same behavior as AlertMessage) */}
+                <Alert
+                    type="danger"
+                    message={error}
+                    onClose={() => setError("")}
+                />
 
-                <div className="mb-3">
-                    <label className="form-label">Password</label>
-                    <input
-                        className="form-control"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
+                <form onSubmit={handleSubmit}>
+                    <div className="mb-3">
+                        <label className="form-label">Username</label>
+                        <input
+                            className="form-control"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                    </div>
 
-                <div className="form-check mb-3">
-                    <input
-                        className="form-check-input"
-                        type="checkbox"
-                        checked={isAdmin}
-                        onChange={(e) => setIsAdmin(e.target.checked)}
-                        id="adminCheck"
-                    />
-                    <label className="form-check-label" htmlFor="adminCheck">
-                        Login as Admin
-                    </label>
-                </div>
+                    <div className="mb-3">
+                        <label className="form-label">Password</label>
+                        <input
+                            className="form-control"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                    </div>
 
-                <button
-                    className="btn btn-primary w-100"
-                    type="submit"
-                    disabled={loading}
-                >
-                    {loading ? "Logging in..." : "Login"}
-                </button>
-            </form>
-        </PageContainer>
+                    {/* ✅ ADMIN CHECKBOX — unchanged */}
+                    <div className="form-check mb-3">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={isAdmin}
+                            onChange={(e) => setIsAdmin(e.target.checked)}
+                            id="adminCheck"
+                        />
+                        <label className="form-check-label" htmlFor="adminCheck">
+                            Login as Admin
+                        </label>
+                    </div>
+
+                    <button
+                        className="btn btn-primary w-100"
+                        type="submit"
+                        disabled={loading}
+                    >
+                        {loading ? "Logging in..." : "Login"}
+                    </button>
+                </form>
+            </div>
+        </MainLayout>
     );
 }
