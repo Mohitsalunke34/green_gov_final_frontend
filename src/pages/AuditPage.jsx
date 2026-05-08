@@ -8,6 +8,7 @@ import {
 } from "../api/auditApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
+import { RequiredPermission } from "../components/PermissionGate";
 
 export default function AuditPage() {
     const [audits, setAudits] = useState([]);
@@ -21,8 +22,6 @@ export default function AuditPage() {
     const [formData, setFormData] = useState({
         complianceId: "",
     });
-
-    const user = JSON.parse(localStorage.getItem("userData") || "{}");
 
     const loadAudits = useCallback(async () => {
         try {
@@ -68,34 +67,34 @@ export default function AuditPage() {
             return;
         }
 
-        try {
-            setLoading(true);
-            await createAudit({ complianceId: formData.complianceId }, user.id);
-            setSuccess("Audit created successfully!");
-            setFormData({ complianceId: "" });
-            setShowCreateForm(false);
-            loadAudits();
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to create audit");
-        } finally {
-            setLoading(false);
-        }
+        // try {
+        //     setLoading(true);
+        //     await createAudit({ complianceId: formData.complianceId }, user.id);
+        //     setSuccess("Audit created successfully!");
+        //     setFormData({ complianceId: "" });
+        //     setShowCreateForm(false);
+        //     loadAudits();
+        // } catch (err) {
+        //     setError(err.response?.data?.message || "Failed to create audit");
+        // } finally {
+        //     setLoading(false);
+        // }
     };
 
     const handleCloseAudit = async (auditId) => {
         setError("");
         setSuccess("");
 
-        try {
-            setLoading(true);
-            await closeAudit(auditId, "COMPLETED", user.id);
-            setSuccess("Audit closed successfully!");
-            loadAudits();
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to close audit");
-        } finally {
-            setLoading(false);
-        }
+        // try {
+        //     setLoading(true);
+        //     await closeAudit(auditId, "COMPLETED", user.id);
+        //     setSuccess("Audit closed successfully!");
+        //     loadAudits();
+        // } catch (err) {
+        //     setError(err.response?.data?.message || "Failed to close audit");
+        // } finally {
+        //     setLoading(false);
+        // }
     };
 
     if (loading && audits.length === 0) return <Loading />;
@@ -114,9 +113,13 @@ export default function AuditPage() {
     };
 
     return (
-        <div>
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2>Audit Management</h2>
+        <RequiredPermission
+            authority="AUDIT_MANAGER"
+            message="Only Audit Managers can access the Audit Management page."
+        >
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Audit Management</h2>
                 <button
                     className="btn btn-primary"
                     onClick={() => setShowCreateForm(!showCreateForm)}
@@ -314,5 +317,6 @@ export default function AuditPage() {
                 </div>
             </div>
         </div>
+        </RequiredPermission>
     );
 }

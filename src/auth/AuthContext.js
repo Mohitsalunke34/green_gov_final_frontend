@@ -1,114 +1,205 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useCallback, useMemo } from "react";
 
 /*
-|--------------------------------------------------------------------------
-| 1. CREATE CONTEXT (Global Auth Channel)
-|--------------------------------------------------------------------------
-| This creates a global "container" that will hold authentication data.
-| At this point, NO data is stored yet — this is just the channel.
-|
-| Think of it as:
-| - a pipe
-| - a wire
-| - a broadcast channel
-|
-| `null` means: if someone tries to use it without a Provider,
-| the default value will be null.
+|---------------------------------------------------------------------------
+| JWT PARSING UTILITY
+|---------------------------------------------------------------------------
+| Decodes JWT payload to extract claims
+*/
+const parseJwt = (token) => {
+  try {
+    if (!token) return null;
+
+    const base64Url = token.split(".")[1];
+    if (!base64Url) return null;
+
+    const base64 = base64Url.replaceAll("-", "+").replaceAll("_", "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.codePointAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error("Failed to parse JWT:", error);
+    return null;
+  }
+};
+
+/*
+|---------------------------------------------------------------------------
+| CREATE CONTEXT (Global Auth Channel)
+|---------------------------------------------------------------------------
 */
 const AuthContext = createContext(null);
 
 /*
-|--------------------------------------------------------------------------
-| 2. AUTH PROVIDER COMPONENT  ✅ MUST START WITH CAPITAL LETTER
-|--------------------------------------------------------------------------
-| This is a NORMAL React component.
-| React *only* allows Hooks (`useState`) inside:
-|   - components (Capitalized)
-|   - custom hooks (starting with `use`)
-|
-| This component:
-| - holds the auth state
-| - exposes login / logout logic
-| - makes auth available to ALL children
+|---------------------------------------------------------------------------
+| AUTH PROVIDER COMPONENT
+|---------------------------------------------------------------------------
+| Token now includes: userId, roles, authorities, sub, exp, iat...
 */
 export const AuthProvider = ({ children }) => {
+  // Read token from localStorage on first load
+  const [token, setToken] = useState(() => localStorage.getItem("token"));
 
-    /*
-    |--------------------------------------------------------------------------
-    | 3. AUTH STATE
-    |--------------------------------------------------------------------------
-    | This state holds the current JWT token INSIDE React.
-    |
-    | We initialize it from `localStorage` so that:
-    | - on page refresh
-    | - the app still knows the user is logged in
-    |
-    | localStorage = persistence
-    | React state  = reactivity (UI updates)
-    */
-    const [token, setToken] = useState(
-        localStorage.getItem("token")
-    );
+  // Decode token (also from localStorage on first load)
+  const [decodedToken, setDecodedToken] = useState(() => {
+    const savedToken = localStorage.getItem("token");
+    return savedToken ? parseJwt(savedToken) : null;
+  });
 
-    /*
-    |--------------------------------------------------------------------------
-    | 4. LOGIN FUNCTION
-    |--------------------------------------------------------------------------
-    | Called AFTER successful login (API returns JWT).
-    |
-    | We do TWO things:
-    | 1. Save token permanently (localStorage)
-    | 2. Update React state (causes re-render)
-    */
-    const login = (jwtToken) => {
-        localStorage.setItem("token", jwtToken);
-        setToken(jwtToken);
-    };
+  /*
+  |---------------------------------------------------------------------------
+  | TOKEN EXPIRY CHECK (Optional but recommended)
+  |---------------------------------------------------------------------------
+  */
+  const isTokenExpired = useMemo(() => {
+    const exp = decodedToken?.exp;
+    if (!exp) return false; // if exp missing, treat as non-expired
+    return Date.now() >= exp * 1000; // exp is usually in seconds
+  }, [decodedToken]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | 5. LOGOUT FUNCTION
-    |--------------------------------------------------------------------------
-    | Called when:
-    | - user clicks logout
-    | - backend returns 401 (handled by Axios)
-    |
-    | Again, TWO things:
-    | 1. Remove token from storage
-    | 2. Update React state (UI updates everywhere)
-    */
-    const logout = () => {
-        localStorage.removeItem("token");
-        setToken(null);
-    };
+  /*
+  |---------------------------------------------------------------------------
+  | LOGIN FUNCTION
+  |---------------------------------------------------------------------------
+  | Stores token, decodes it, stores claims in localStorage
+  */
+  const login = useCallback((jwtToken) => {
+    // Save token
+    localStorage.setItem("token", jwtToken);
+    setToken(jwtToken);
 
-    /*
-    |--------------------------------------------------------------------------
-    | 6. PROVIDE AUTH TO CHILD COMPONENTS
-    |--------------------------------------------------------------------------
-    | Everything inside <AuthProvider> can now access:
-    | - token
-    | - login()
-    | - logout()
-    |
-    | This is the SINGLE SOURCE OF TRUTH for authentication.
-    */
-    return (
-        <AuthContext.Provider value={{ token, login, logout }}>
-            {children}
-        </AuthContext.Provider>
-    );
+    // Decode token
+    const decoded = parseJwt(jwtToken);
+    setDecodedToken(decoded);
+
+    // Store important fields for quick access (optional)
+    if (decoded) {
+      localStorage.setItem(
+        "userClaims",
+        JSON.stringify({
+          userId: decoded.userId ?? null,
+          roles: decoded.roles || [],
+          authorities: decoded.authorities || [],
+          username: decoded.sub || "",
+          exp: decoded.exp ?? null,
+        })
+      );
+    } else {
+      // If decode fails, still remove claims so you don't keep stale values
+      localStorage.removeItem("userClaims");
+    }
+  }, []);
+
+  /*
+  |---------------------------------------------------------------------------
+  | LOGOUT FUNCTION
+  |---------------------------------------------------------------------------
+  */
+  const logout = useCallback(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("userClaims");
+    setToken(null);
+    setDecodedToken(null);
+  }, []);
+
+  /*
+  |---------------------------------------------------------------------------
+  | GETTERS
+  |---------------------------------------------------------------------------
+  */
+  const getUserId = useCallback(() => {
+    return decodedToken?.userId ?? null;
+  }, [decodedToken]);
+
+  const getUsername = useCallback(() => {
+    return decodedToken?.sub ?? null;
+  }, [decodedToken]);
+
+  const getRoles = useCallback(() => {
+    const roles = decodedToken?.roles || [];
+    return roles.map((r) => (typeof r === "string" ? r.replace("ROLE_", "") : r));
+  }, [decodedToken]);
+
+  const getAuthorities = useCallback(() => {
+    return decodedToken?.authorities || [];
+  }, [decodedToken]);
+
+  /*
+  |---------------------------------------------------------------------------
+  | CONVENIENCE HELPERS
+  |---------------------------------------------------------------------------
+  */
+  const hasRole = useCallback(
+    (role) => {
+      if (!role) return false;
+      return getRoles().includes(role);
+    },
+    [getRoles]
+  );
+
+  const hasAuthority = useCallback(
+    (authority) => {
+      if (!authority) return false;
+      return getAuthorities().includes(authority);
+    },
+    [getAuthorities]
+  );
+
+  /*
+  |---------------------------------------------------------------------------
+  | AUTH STATE
+  |---------------------------------------------------------------------------
+  | Only authenticated if token exists AND is not expired
+  */
+  const isAuthenticated = !!token && !isTokenExpired;
+
+  /*
+  |---------------------------------------------------------------------------
+  | PROVIDE AUTH TO CHILD COMPONENTS (MEMOIZED)
+  |---------------------------------------------------------------------------
+  */
+  const contextValue = useMemo(
+    () => ({
+      // raw token + decoded payload
+      token,
+      decodedToken,
+
+      // actions
+      login,
+      logout,
+
+      // getters
+      getUserId,
+      getUsername,
+      getRoles,
+      getAuthorities,
+
+      // helpers
+      hasRole,
+      hasAuthority,
+
+      // auth flags
+      isAuthenticated,
+      isTokenExpired,
+    }),
+    [token, decodedToken, login, logout, getUserId, getUsername, getRoles, getAuthorities, hasRole, hasAuthority, isAuthenticated, isTokenExpired]
+  );
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 /*
-|--------------------------------------------------------------------------
-| 7. CUSTOM HOOK FOR EASY ACCESS
-|--------------------------------------------------------------------------
-| Instead of writing:
-|   useContext(AuthContext)
-| everywhere, we create a clean custom hook.
-|
-| Usage in any component:
-|   const { token, login, logout } = useAuth();
+|---------------------------------------------------------------------------
+| CUSTOM HOOK
+|---------------------------------------------------------------------------
 */
 export const useAuth = () => useContext(AuthContext);

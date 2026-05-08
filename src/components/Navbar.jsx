@@ -1,19 +1,27 @@
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 
 export default function Navbar() {
     const navigate = useNavigate();
+    const { logout, getUsername, isAuthenticated } = useAuth();
 
     const handleLogout = () => {
-        // Clear auth token from localStorage
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("userData");
-        navigate("/login");
+        logout();
+        navigate("/");
     };
 
     return (
         <nav className="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
             <div className="container-fluid">
-                <a className="navbar-brand fw-bold" href="/dashboard">
+                <a 
+                    className="navbar-brand fw-bold" 
+                    href="/" 
+                    onClick={(e) => {
+                        e.preventDefault();
+                        navigate("/");
+                    }}
+                    style={{ cursor: "pointer" }}
+                >
                     🌱 GreenGov
                 </a>
                 <button
@@ -29,19 +37,23 @@ export default function Navbar() {
                 </button>
                 <div className="collapse navbar-collapse" id="navbarNav">
                     <ul className="navbar-nav ms-auto">
-                        <li className="nav-item">
-                            <span className="nav-link">
-                                👤 {localStorage.getItem("username") || "User"}
-                            </span>
-                        </li>
-                        <li className="nav-item">
-                            <button
-                                className="btn btn-outline-light"
-                                onClick={handleLogout}
-                            >
-                                Logout
-                            </button>
-                        </li>
+                        {isAuthenticated && (
+                            <>
+                                <li className="nav-item">
+                                    <span className="nav-link">
+                                        👤 {getUsername() || "User"}
+                                    </span>
+                                </li>
+                                <li className="nav-item">
+                                    <button
+                                        className="btn btn-outline-light"
+                                        onClick={handleLogout}
+                                    >
+                                        Logout
+                                    </button>
+                                </li>
+                            </>
+                        )}
                     </ul>
                 </div>
             </div>

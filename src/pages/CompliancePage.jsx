@@ -1,9 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { createCompliance, getComplianceBySubject, getComplianceByParticipant } from "../api/complianceApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-
+import { RequiredPermission } from "../components/PermissionGate";
+import { AuthProvider } from "../auth/AuthContext"; // Adjust the path if necessary
 export default function CompliancePage() {
+    const { user } = useContext(AuthProvider);
     const [complianceRecords, setComplianceRecords] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
@@ -20,8 +22,6 @@ export default function CompliancePage() {
         notes: "",
         evidenceURL: "",
     });
-
-    const user = JSON.parse(localStorage.getItem("userData") || "{}");
 
     useEffect(() => {
         loadCompliance();
@@ -91,19 +91,29 @@ export default function CompliancePage() {
 
     if (loading && complianceRecords.length === 0) return <Loading />;
 
-    return (
-        <div>
-            <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2>Compliance Management</h2>
-                <button
-                    className="btn btn-primary"
-                    onClick={() => setShowCreateForm(!showCreateForm)}
-                >
-                    + Create Compliance Record
-                </button>
-            </div>
+    const getResultBadgeColor = (result) => {
+        if (result === "PASS") return "success";
+        if (result === "FAIL") return "danger";
+        return "warning"; // PENDING
+    };
 
-            {error && <Alert message={error} type="danger" />}
+    return (
+        <RequiredPermission
+            authority="COMPLIANCE_OFFICER"
+            message="Only Compliance Officers can access the Compliance Management page."
+        >
+            <div>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Compliance Management</h2>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => setShowCreateForm(!showCreateForm)}
+                    >
+                        + Create Compliance Record
+                    </button>
+                </div>
+
+                {error && <Alert message={error} type="danger" />}
             {success && <Alert message={success} type="success" />}
 
             {/* Create Compliance Form */}
@@ -317,13 +327,7 @@ export default function CompliancePage() {
                                             <td>{record.participantId}</td>
                                             <td>
                                                 <span
-                                                    className={`badge bg-${
-                                                        record.result === "PASS"
-                                                            ? "success"
-                                                            : record.result === "FAIL"
-                                                            ? "danger"
-                                                            : "warning"
-                                                    }`}
+                                                    className={`badge bg-${getResultBadgeColor(record.result)}`}
                                                 >
                                                     {record.result}
                                                 </span>
@@ -341,5 +345,6 @@ export default function CompliancePage() {
                 </div>
             </div>
         </div>
+        </RequiredPermission>
     );
 }

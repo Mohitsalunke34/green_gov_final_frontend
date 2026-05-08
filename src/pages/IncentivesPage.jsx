@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { fetchAllIncentives } from "../api/incentiveApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
+import { RequiredPermission } from "../components/PermissionGate";
 
 export default function IncentivesPage() {
     const [incentives, setIncentives] = useState([]);
@@ -28,10 +29,11 @@ export default function IncentivesPage() {
     if (loading) return <Loading />;
 
     return (
-        <div>
-            <h2 className="mb-4">Incentives</h2>
+        
+            <div>
+                <h2 className="mb-4">Incentives</h2>
 
-            {error && <Alert message={error} type="danger" />}
+                {error && <Alert message={error} type="danger" />}
 
             <div className="card">
                 <div className="card-header">
@@ -79,6 +81,6 @@ export default function IncentivesPage() {
                     )}
                 </div>
             </div>
-        </div>
+            </div>
     );
 }

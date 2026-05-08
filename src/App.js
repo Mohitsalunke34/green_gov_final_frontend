@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import MainLayout from "./components/MainLayout";
+import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -16,8 +17,8 @@ import PrivateRoute from "./auth/PrivateRoute";
 function App() {
   return (
     <Routes>
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/login" />} />
+      {/* Home page - for unauthenticated users */}
+      <Route path="/" element={<HomePage />} />
 
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />

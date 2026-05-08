@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 
 import Alert from "../components/Alert";
-import MainLayout from "../components/MainLayout";
 
 import { loginUser, loginAdmin } from "../api/authApi";
 import { useAuth } from "../auth/AuthContext";
+
 
 export default function LoginPage() {
     const [username, setUsername] = useState("");
@@ -14,33 +14,43 @@ export default function LoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
 
-    const { login } = useAuth();
+    const { login, decodedToken, getRoles, getAuthorities, getUsername } = useAuth();
     const navigate = useNavigate();
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError("");
-        setLoading(true);
+    
 
-        try {
-            const data = isAdmin
-                ? await loginAdmin(username, password)
-                : await loginUser(username, password);
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    try {
+        const data = isAdmin
+            ? await loginAdmin(username, password)
+            : await loginUser(username, password);
 
-            login(data.token);
-            navigate("/dashboard");
-        } catch (err) {
-            setError(
-                err.response?.data?.message ||
-                "Authentication failed. Please try again."
-            );
-        } finally {
-            setLoading(false);
-        }
-    };
+        // ✅ Call login
+        login(data.token);
+
+        // ✅ TEMPORARY TEST LOGS
+        console.log("JWT token:", data.token);
+        console.log("Decoded token:", decodedToken);
+        console.log("Roles:", getRoles());
+        console.log("Authorities:", getAuthorities());
+        console.log("Username:", getUsername());
+
+        navigate("/dashboard");
+    } catch (err) {
+        setError(
+            err.response?.data?.message ||
+            "Authentication failed. Please try again."
+        );
+    } finally {
+        setLoading(false);
+    }
+};
 
     return (
-        <MainLayout>
+        
             <div className="container mt-4" style={{ maxWidth: "420px" }}>
                 <h3 className="mb-3">Login</h3>
 
@@ -53,8 +63,9 @@ export default function LoginPage() {
 
                 <form onSubmit={handleSubmit}>
                     <div className="mb-3">
-                        <label className="form-label">Username</label>
+                        <label htmlFor="username" className="form-label">Username</label>
                         <input
+                            id="username"
                             className="form-control"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -63,8 +74,9 @@ export default function LoginPage() {
                     </div>
 
                     <div className="mb-3">
-                        <label className="form-label">Password</label>
+                        <label htmlFor="password" className="form-label">Password</label>
                         <input
+                            id="password"
                             className="form-control"
                             type="password"
                             value={password}
@@ -105,6 +117,6 @@ export default function LoginPage() {
                     </p>
                 </div>
             </div>
-        </MainLayout>
+       
     );
 }

@@ -2,9 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import { getParticipantById, updateParticipant, getParticipantDocuments } from "../api/participantApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
+import { useAuth } from "../auth/AuthContext";
 
 export default function ProfilePage() {
-    const user = JSON.parse(localStorage.getItem("userData") || "{}");
+    const { getUserId, getUsername } = useAuth();
+    const userId = getUserId();
+    const username = getUsername();
+    
     const [profile, setProfile] = useState({});
     const [documents, setDocuments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,11 +19,17 @@ export default function ProfilePage() {
     const loadProfile = useCallback(async () => {
         try {
             setLoading(true);
-            const profileData = await getParticipantById(user.id);
+            if (!userId) {
+                setError("User ID not available");
+                setLoading(false);
+                return;
+            }
+            
+            const profileData = await getParticipantById(userId);
             setProfile(profileData);
             setFormData(profileData);
             
-            const docsData = await getParticipantDocuments(user.id);
+            const docsData = await getParticipantDocuments(userId);
             setDocuments(docsData || []);
             setError("");
         } catch (err) {
@@ -27,13 +37,13 @@ export default function ProfilePage() {
         } finally {
             setLoading(false);
         }
-    }, [user.id]);
+    }, [userId]);
 
     useEffect(() => {
-        if (user.id) {
+        if (userId) {
             loadProfile();
         }
-    }, [user.id, loadProfile]);
+    }, [userId, loadProfile]);
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -42,7 +52,7 @@ export default function ProfilePage() {
 
     const handleSaveProfile = async () => {
         try {
-            await updateParticipant(user.id, formData);
+            await updateParticipant(userId, formData);
             setProfile(formData);
             setEditMode(false);
             setError("");
@@ -66,6 +76,12 @@ export default function ProfilePage() {
                             <h5 className="mb-0">Profile Information</h5>
                         </div>
                         <div className="card-body">
+                            {!editMode && (
+                                <div className="mb-3">
+                                    <label className="form-label">Username</label>
+                                    <p className="form-control-plaintext fw-bold">{username}</p>
+                                </div>
+                            )}
                             {editMode ? (
                                 <>
                                     <div className="mb-3">
@@ -109,11 +125,7 @@ export default function ProfilePage() {
                                 <>
                                     <div className="mb-3">
                                         <label htmlFor="username" className="form-label fw-bold">Username</label>
-                                        <p id="username" className="form-control-plaintext">{user.username || "N/A"}</p>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label htmlFor="email" className="form-label fw-bold">Email</label>
-                                        <p id="email" className="form-control-plaintext">{user.email || "N/A"}</p>
+                                        <p id="username" className="form-control-plaintext">{username || "N/A"}</p>
                                     </div>
                                     <div className="mb-3">
                                         <label htmlFor="profileName" className="form-label fw-bold">Name</label>
