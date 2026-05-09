@@ -1,186 +1,125 @@
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { usePermission } from "../hooks/usePermission";
-import MainLayout from "../components/MainLayout";
+
+const ALL_SERVICE_CARDS = [
+    {
+        title: "Programs",
+        desc: "Create and manage environmental programs. Track budget, status, and assigned managers.",
+        path: "/programs",
+        requiredAuthority: "PROGRAM_MANAGER",
+    },
+    {
+        title: "Projects",
+        desc: "View and manage sustainability projects. Review applications and project milestones.",
+        path: "/projects",
+        requiredAuthority: null,   // any authenticated user
+    },
+    {
+        title: "Applications",
+        desc: "Submit and track program applications. Manage application status and review outcomes.",
+        path: "/applications",
+        requiredAuthority: null,
+    },
+    {
+        title: "Incentives & Disbursements",
+        desc: "Process financial incentives for verified participants and track disbursement history.",
+        path: "/incentives",
+        requiredAuthority: "DISBURSEMENT_OFFICER",
+    },
+    {
+        title: "Compliance Management",
+        desc: "Create compliance records, run checks, and track adherence for projects and applications.",
+        path: "/compliance",
+        requiredAuthority: "COMPLIANCE_OFFICER",
+    },
+    {
+        title: "Audit Management",
+        desc: "Initiate and manage audit processes based on compliance records.",
+        path: "/audit",
+        requiredAuthority: "AUDIT_MANAGER",
+    },
+    {
+        title: "Reports & Analytics",
+        desc: "Generate operational reports and view system-wide environmental analytics.",
+        path: "/reports",
+        requiredAuthority: null,
+    },
+    {
+        title: "Resource & Infrastructure",
+        desc: "Allocate resources, manage infrastructure assets, and update equipment status.",
+        path: "/resources",
+        requiredAuthority: "PROGRAM_MANAGER",
+    },
+];
 
 export default function DashboardPage() {
     const navigate = useNavigate();
-    const { getRoles, getAuthorities } = useAuth();
-    const {
-        isProgramManager,
-        isCitizenOrBusiness,
-    } = usePermission();
+    const { getUsername, getAuthorities, getRoles } = useAuth();
+    const { isProgramManager } = usePermission();
 
-    // Component card data - role-based visibility
-    const componentCards = [
-        {
-            id: "programs",
-            title: "Programs",
-            description: "Manage green initiative programs",
-            icon: "📋",
-            path: "/programs",
-            requiredAuthority: "PROGRAM_MANAGER",
-            color: "primary",
-        },
-        {
-            id: "projects",
-            title: "Projects",
-            description: "Create and manage projects",
-            icon: "🏗️",
-            path: "/projects",
-            requiredRoles: ["CITIZEN", "BUSINESS_OWNER"],
-            color: "info",
-        },
-        {
-            id: "applications",
-            title: "Applications",
-            description: "View and manage program applications",
-            icon: "📝",
-            path: "/applications",
-            requiredAny: true, // Visible to CITIZEN/BUSINESS_OWNER or PROGRAM_MANAGER
-            color: "warning",
-        },
-        {
-            id: "compliance",
-            title: "Compliance",
-            description: "Track compliance records and status",
-            icon: "✓",
-            path: "/compliance",
-            requiredAuthority: "COMPLIANCE_OFFICER",
-            color: "success",
-        },
-        {
-            id: "audit",
-            title: "Audit",
-            description: "Manage audit processes and records",
-            icon: "🔍",
-            path: "/audit",
-            requiredAuthority: "AUDIT_MANAGER",
-            color: "danger",
-        },
-        {
-            id: "incentives",
-            title: "Incentives",
-            description: "Manage incentive disbursements",
-            icon: "💰",
-            path: "/incentives",
-            requiredAuthority: "DISBURSEMENT_OFFICER",
-            color: "success",
-        },
-    ];
+    const username    = getUsername() || "User";
+    const authorities = getAuthorities();
+    const roles       = getRoles();
 
-    // Check if user can access a card
-    const canAccessCard = (card) => {
-        if (card.requiredAuthority) {
-            return getAuthorities().includes(card.requiredAuthority);
-        }
-        if (card.requiredRoles) {
-            const userRoles = getRoles();
-            return card.requiredRoles.some((role) => userRoles.includes(role));
-        }
-        if (card.requiredAny) {
-            // Applications visible to CITIZEN/BUSINESS_OWNER or PROGRAM_MANAGER
-            return (
-                isCitizenOrBusiness() ||
-                isProgramManager()
-            );
-        }
-        return true; // Default accessible
+    const canSeeCard = (card) => {
+        if (!card.requiredAuthority) return true;
+        if (card.requiredAuthority === "DISBURSEMENT_OFFICER")
+            return authorities.includes("DISBURSEMENT_OFFICER") || authorities.includes("PROGRAM_MANAGER");
+        return authorities.includes(card.requiredAuthority);
     };
 
-    const visibleCards = componentCards.filter(canAccessCard);
+    const visibleCards = ALL_SERVICE_CARDS.filter(canSeeCard);
+    const roleLabel    = isProgramManager ? "Program Manager" :
+                         authorities.includes("COMPLIANCE_OFFICER") ? "Compliance Officer" :
+                         authorities.includes("AUDIT_MANAGER")      ? "Audit Manager" :
+                         authorities.includes("DISBURSEMENT_OFFICER") ? "Disbursement Officer" :
+                         roles.includes("CITIZEN") ? "Citizen" : "User";
 
     return (
-        <MainLayout>
-            <div className="dashboard-container">
-                <div className="mb-4">
-                    <h2 className="fw-bold">Dashboard</h2>
-                    <p className="text-muted">Welcome! Access the features available to your role.</p>
-                </div>
-
-                {visibleCards.length === 0 ? (
-                    <div className="alert alert-info" role="alert">
-                        <h5>No Features Available</h5>
-                        <p>Your current role does not have access to any features. Please contact your administrator.</p>
-                    </div>
-                ) : (
-                    <div className="row g-4">
-                        {visibleCards.map((card) => (
-                            <div key={card.id} className="col-lg-4 col-md-6">
-                                <button
-                                    type="button"
-                                    className={`card h-100 shadow-sm border-0 w-100 text-start transition`}
-                                    onClick={() => navigate(card.path)}
-                                    style={{
-                                        cursor: "pointer",
-                                        transition: "transform 0.2s, box-shadow 0.2s",
-                                        background: "white",
-                                        padding: 0,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = "translateY(-5px)";
-                                        e.currentTarget.style.boxShadow = "0 0.5rem 1rem rgba(0, 0, 0, 0.15)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = "translateY(0)";
-                                        e.currentTarget.style.boxShadow = "0 0.125rem 0.25rem rgba(0, 0, 0, 0.075)";
-                                    }}
-                                >
-                                    <div className={`card-body text-center`}>
-                                        <div className="display-5 mb-3">{card.icon}</div>
-                                        <h5 className="card-title fw-bold mb-2">{card.title}</h5>
-                                        <p className="card-text text-muted small mb-3">
-                                            {card.description}
-                                        </p>
-                                        <span className={`btn btn-sm btn-${card.color}`}>
-                                            Open →
-                                        </span>
-                                    </div>
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                )}
-
-                {/* Stats Section */}
-                <div className="row g-4 mt-5 pt-4 border-top">
-                    <div className="col-md-3">
-                        <div className="text-center">
-                            <div className="display-6 text-primary mb-2">👤</div>
-                            <h6 className="text-muted">User Role</h6>
-                            <p className="fw-bold">
-                                {getRoles().join(", ") || "N/A"}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="text-center">
-                            <div className="display-6 text-success mb-2">🔑</div>
-                            <h6 className="text-muted">Authorities</h6>
-                            <p className="fw-bold">
-                                {getAuthorities().length > 0
-                                    ? getAuthorities().join(", ")
-                                    : "None"}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="text-center">
-                            <div className="display-6 text-info mb-2">📊</div>
-                            <h6 className="text-muted">Available Features</h6>
-                            <p className="fw-bold">{visibleCards.length}</p>
-                        </div>
-                    </div>
-                    <div className="col-md-3">
-                        <div className="text-center">
-                            <div className="display-6 text-warning mb-2">✓</div>
-                            <h6 className="text-muted">Status</h6>
-                            <p className="fw-bold text-success">Authenticated</p>
-                        </div>
-                    </div>
+        <div>
+            {/* Page header */}
+            <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                <div>
+                    <h4 className="fw-bold mb-0 text-success">Dashboard</h4>
+                    <p className="text-muted small mb-0">
+                        Welcome back, <strong>{username}</strong> &mdash; <span className="text-success">{roleLabel}</span>
+                    </p>
                 </div>
             </div>
-        </MainLayout>
+
+            {/* Service cards */}
+            <div className="row g-4">
+                {visibleCards.map((card) => (
+                    <div key={card.path} className="col-xl-3 col-lg-4 col-md-6">
+                        <div
+                            className="card border-0 shadow-sm h-100"
+                            style={{ cursor: "pointer", transition: "box-shadow 0.15s ease" }}
+                            onClick={() => navigate(card.path)}
+                            onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 .5rem 1rem rgba(25,135,84,.15)"}
+                            onMouseLeave={(e) => e.currentTarget.style.boxShadow = ""}
+                        >
+                            <div className="card-body p-4">
+                                <div className="bg-success bg-opacity-10 rounded-2 mb-3 d-inline-flex align-items-center justify-content-center"
+                                    style={{ width: 40, height: 40 }}>
+                                    <svg width="18" height="18" fill="#198754" viewBox="0 0 16 16">
+                                        <path d="M1 2.828c.885-.37 2.154-.769 3.388-.893 1.33-.134 2.458.063 3.112.752v9.746c-.935-.53-2.12-.603-3.213-.493-1.18.12-2.37.461-3.287.811V2.828zm7.5-.141c.654-.689 1.782-.886 3.112-.752 1.234.124 2.503.523 3.388.893v9.923c-.918-.35-2.107-.692-3.287-.81-1.094-.111-2.278-.039-3.213.492V2.687zM8 1.783C7.015.936 5.587.81 4.287.94c-1.514.153-3.042.672-3.994 1.105A.5.5 0 0 0 0 2.5v11a.5.5 0 0 0 .707.455c.882-.4 2.303-.881 3.68-1.02 1.409-.142 2.59.087 3.223.877a.5.5 0 0 0 .78 0c.633-.79 1.814-1.019 3.222-.877 1.378.139 2.8.62 3.681 1.02A.5.5 0 0 0 16 13.5v-11a.5.5 0 0 0-.293-.455c-.952-.433-2.48-.952-3.994-1.105C10.413.809 8.985.936 8 1.783z"/>
+                                    </svg>
+                                </div>
+                                <h6 className="fw-bold mb-2">{card.title}</h6>
+                                <p className="text-muted small mb-3">{card.desc}</p>
+                                <span className="text-success small fw-semibold">Open &rarr;</span>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {visibleCards.length === 0 && (
+                <div className="text-center py-5">
+                    <p className="text-muted">No services available for your account role.</p>
+                </div>
+            )}
+        </div>
     );
 }
-

@@ -1,44 +1,39 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import { createCompliance, getComplianceBySubject, getComplianceByParticipant } from "../api/complianceApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
 import { RequiredPermission } from "../components/PermissionGate";
-import { AuthProvider } from "../auth/AuthContext"; // Adjust the path if necessary
+import { useAuth } from "../auth/AuthContext";
+
 export default function CompliancePage() {
-    const { user } = useContext(AuthProvider);
-    const [complianceRecords, setComplianceRecords] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    const { getUserId } = useAuth();
+    const [records, setRecords]               = useState([]);
+    const [loading, setLoading]               = useState(false);
+    const [error, setError]                   = useState("");
+    const [success, setSuccess]               = useState("");
     const [showCreateForm, setShowCreateForm] = useState(false);
-    const [filterType, setFilterType] = useState("all");
-    const [filterId, setFilterId] = useState("");
+    const [filterType, setFilterType]         = useState("all");
+    const [filterId, setFilterId]             = useState("");
 
     const [formData, setFormData] = useState({
-        subjectType: "PROJECT",
-        subjectId: "",
-        participantId: "",
-        result: "PASS",
-        notes: "",
-        evidenceURL: "",
+        subjectType: "PROJECT", subjectId: "", participantId: "",
+        result: "PASS", notes: "", evidenceURL: "",
     });
 
-    useEffect(() => {
-        loadCompliance();
-    }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    useEffect(() => { loadCompliance(); }, []);
 
     const loadCompliance = async () => {
         try {
             setLoading(true);
             if (filterType === "participant" && filterId) {
                 const data = await getComplianceByParticipant(filterId);
-                setComplianceRecords(data || []);
+                setRecords(data || []);
             } else if (filterType === "subject" && filterId) {
                 const data = await getComplianceBySubject(formData.subjectType, filterId);
-                setComplianceRecords(data || []);
+                setRecords(data || []);
             } else {
-                // Load all - without filter
-                setComplianceRecords([]);
+                setRecords([]);
             }
             setError("");
         } catch (err) {
@@ -48,38 +43,20 @@ export default function CompliancePage() {
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-    };
+    const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
-    const handleCreateCompliance = async (e) => {
+    const handleCreate = async (e) => {
         e.preventDefault();
-        setError("");
-        setSuccess("");
-
-        if (
-            !formData.subjectType ||
-            !formData.subjectId ||
-            !formData.participantId ||
-            !formData.result
-        ) {
-            setError("Subject Type, Subject ID, Participant ID, and Result are required");
+        setError(""); setSuccess("");
+        if (!formData.subjectId || !formData.participantId) {
+            setError("Subject ID and Participant ID are required.");
             return;
         }
-
         try {
             setLoading(true);
-            await createCompliance(formData, user.id);
-            setSuccess("Compliance record created successfully!");
-            setFormData({
-                subjectType: "PROJECT",
-                subjectId: "",
-                participantId: "",
-                result: "PASS",
-                notes: "",
-                evidenceURL: "",
-            });
+            await createCompliance(formData, getUserId());
+            setSuccess("Compliance record created successfully.");
+            setFormData({ subjectType: "PROJECT", subjectId: "", participantId: "", result: "PASS", notes: "", evidenceURL: "" });
             setShowCreateForm(false);
             loadCompliance();
         } catch (err) {
@@ -89,262 +66,170 @@ export default function CompliancePage() {
         }
     };
 
-    if (loading && complianceRecords.length === 0) return <Loading />;
+    const resultBadge = (result) =>
+        result === "PASS" ? "bg-success" : result === "FAIL" ? "bg-danger" : "bg-warning text-dark";
 
-    const getResultBadgeColor = (result) => {
-        if (result === "PASS") return "success";
-        if (result === "FAIL") return "danger";
-        return "warning"; // PENDING
-    };
+    if (loading && records.length === 0) return <Loading />;
 
     return (
-        <RequiredPermission
-            authority="COMPLIANCE_OFFICER"
-            message="Only Compliance Officers can access the Compliance Management page."
-        >
+        <RequiredPermission authority="COMPLIANCE_OFFICER" message="Only Compliance Officers can access this page.">
             <div>
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Compliance Management</h2>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => setShowCreateForm(!showCreateForm)}
-                    >
-                        + Create Compliance Record
+                {/* Page header */}
+                <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 className="fw-bold text-success mb-0">Compliance Management</h4>
+                        <p className="text-muted small mb-0">Create and review compliance records</p>
+                    </div>
+                    <button className="btn btn-success btn-sm" onClick={() => setShowCreateForm(!showCreateForm)}>
+                        {showCreateForm ? "Cancel" : "+ Create Record"}
                     </button>
                 </div>
 
-                {error && <Alert message={error} type="danger" />}
-            {success && <Alert message={success} type="success" />}
+                {error   && <Alert message={error}   type="danger" />}
+                {success && <Alert message={success} type="success" />}
 
-            {/* Create Compliance Form */}
-            {showCreateForm && (
-                <div className="card mb-4">
-                    <div className="card-header bg-info text-white">
-                        <h5 className="mb-0">Create New Compliance Record</h5>
+                {/* Create Form */}
+                {showCreateForm && (
+                    <div className="card border-0 shadow-sm mb-4">
+                        <div className="card-header bg-success text-white border-0">
+                            <h6 className="mb-0">Create Compliance Record</h6>
+                        </div>
+                        <div className="card-body p-4">
+                            <form onSubmit={handleCreate}>
+                                <div className="row g-3">
+                                    <div className="col-md-4">
+                                        <label htmlFor="comp-subjectType" className="form-label small fw-semibold">Subject Type</label>
+                                        <select id="comp-subjectType" className="form-select" name="subjectType"
+                                            value={formData.subjectType} onChange={handleInputChange}>
+                                            <option value="PROJECT">Project</option>
+                                            <option value="APPLICATION">Application</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="comp-subjectId" className="form-label small fw-semibold">Subject ID</label>
+                                        <input id="comp-subjectId" type="number" className="form-control" name="subjectId"
+                                            value={formData.subjectId} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="comp-participantId" className="form-label small fw-semibold">Participant ID</label>
+                                        <input id="comp-participantId" type="number" className="form-control" name="participantId"
+                                            value={formData.participantId} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="comp-result" className="form-label small fw-semibold">Result</label>
+                                        <select id="comp-result" className="form-select" name="result"
+                                            value={formData.result} onChange={handleInputChange}>
+                                            <option value="PASS">Pass</option>
+                                            <option value="FAIL">Fail</option>
+                                            <option value="PENDING">Pending</option>
+                                        </select>
+                                    </div>
+                                    <div className="col-md-8">
+                                        <label htmlFor="comp-evidenceURL" className="form-label small fw-semibold">Evidence URL</label>
+                                        <input id="comp-evidenceURL" type="url" className="form-control" name="evidenceURL"
+                                            value={formData.evidenceURL} onChange={handleInputChange}
+                                            placeholder="https://example.com/evidence.pdf" />
+                                    </div>
+                                    <div className="col-12">
+                                        <label htmlFor="comp-notes" className="form-label small fw-semibold">Notes</label>
+                                        <textarea id="comp-notes" className="form-control" name="notes" rows="2"
+                                            value={formData.notes} onChange={handleInputChange} />
+                                    </div>
+                                </div>
+                                <div className="mt-3 d-flex gap-2">
+                                    <button type="submit" className="btn btn-success btn-sm" disabled={loading}>
+                                        {loading ? "Creating..." : "Create Record"}
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowCreateForm(false)}>Cancel</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                    <div className="card-body">
-                        <form onSubmit={handleCreateCompliance}>
-                            <div className="row">
-                                <div className="col-md-6 mb-3">
-                                    <label htmlFor="subjectType" className="form-label">
-                                        Subject Type
+                )}
+
+                {/* Filter */}
+                <div className="card border-0 shadow-sm mb-4">
+                    <div className="card-header bg-white border-bottom">
+                        <h6 className="mb-0 fw-semibold">Filter Records</h6>
+                    </div>
+                    <div className="card-body p-3">
+                        <div className="row g-3 align-items-end">
+                            <div className="col-md-3">
+                                <label className="form-label small fw-semibold">Filter By</label>
+                                <select className="form-select form-select-sm" value={filterType}
+                                    onChange={(e) => { setFilterType(e.target.value); setFilterId(""); }}>
+                                    <option value="all">All Records</option>
+                                    <option value="participant">Participant ID</option>
+                                    <option value="subject">Subject ID</option>
+                                </select>
+                            </div>
+                            {filterType !== "all" && (
+                                <div className="col-md-3">
+                                    <label className="form-label small fw-semibold">
+                                        {filterType === "participant" ? "Participant ID" : "Subject ID"}
                                     </label>
-                                    <select
-                                        id="subjectType"
-                                        className="form-control"
-                                        name="subjectType"
-                                        value={formData.subjectType}
-                                        onChange={handleInputChange}
-                                        required
-                                    >
+                                    <input type="number" className="form-control form-control-sm" value={filterId}
+                                        onChange={(e) => setFilterId(e.target.value)} placeholder="Enter ID" />
+                                </div>
+                            )}
+                            {filterType !== "all" && filterType === "subject" && (
+                                <div className="col-md-3">
+                                    <label className="form-label small fw-semibold">Subject Type</label>
+                                    <select className="form-select form-select-sm" name="subjectType"
+                                        value={formData.subjectType} onChange={handleInputChange}>
                                         <option value="PROJECT">Project</option>
                                         <option value="APPLICATION">Application</option>
                                     </select>
                                 </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label htmlFor="subjectId" className="form-label">
-                                        Subject ID
-                                    </label>
-                                    <input
-                                        id="subjectId"
-                                        type="number"
-                                        className="form-control"
-                                        name="subjectId"
-                                        value={formData.subjectId}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
+                            )}
+                            <div className="col-md-2">
+                                <button className="btn btn-success btn-sm w-100" onClick={loadCompliance} disabled={loading}>
+                                    Search
+                                </button>
                             </div>
-
-                            <div className="row">
-                                <div className="col-md-6 mb-3">
-                                    <label htmlFor="participantId" className="form-label">
-                                        Participant ID
-                                    </label>
-                                    <input
-                                        id="participantId"
-                                        type="number"
-                                        className="form-control"
-                                        name="participantId"
-                                        value={formData.participantId}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label htmlFor="result" className="form-label">
-                                        Result
-                                    </label>
-                                    <select
-                                        id="result"
-                                        className="form-control"
-                                        name="result"
-                                        value={formData.result}
-                                        onChange={handleInputChange}
-                                        required
-                                    >
-                                        <option value="PASS">Pass</option>
-                                        <option value="FAIL">Fail</option>
-                                        <option value="PENDING">Pending</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="mb-3">
-                                <label htmlFor="notes" className="form-label">
-                                    Notes
-                                </label>
-                                <textarea
-                                    id="notes"
-                                    className="form-control"
-                                    name="notes"
-                                    value={formData.notes}
-                                    onChange={handleInputChange}
-                                    rows="3"
-                                    placeholder="Additional notes about compliance check"
-                                />
-                            </div>
-
-                            <div className="mb-3">
-                                <label htmlFor="evidenceURL" className="form-label">
-                                    Evidence URL
-                                </label>
-                                <input
-                                    id="evidenceURL"
-                                    type="url"
-                                    className="form-control"
-                                    name="evidenceURL"
-                                    value={formData.evidenceURL}
-                                    onChange={handleInputChange}
-                                    placeholder="https://example.com/evidence/report.pdf"
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="btn btn-success me-2"
-                                disabled={loading}
-                            >
-                                {loading ? "Creating..." : "Create Record"}
-                            </button>
-                            <button
-                                type="button"
-                                className="btn btn-secondary"
-                                onClick={() => setShowCreateForm(false)}
-                                disabled={loading}
-                            >
-                                Cancel
-                            </button>
-                        </form>
+                        </div>
                     </div>
                 </div>
-            )}
 
-            {/* Filter Section */}
-            <div className="card mb-4">
-                <div className="card-header">
-                    <h5 className="mb-0">Filter Compliance Records</h5>
-                </div>
-                <div className="card-body">
-                    <div className="row">
-                        <div className="col-md-4 mb-3">
-                            <label htmlFor="filterType" className="form-label">
-                                Filter By
-                            </label>
-                            <select
-                                id="filterType"
-                                className="form-control"
-                                value={filterType}
-                                onChange={(e) => {
-                                    setFilterType(e.target.value);
-                                    setFilterId("");
-                                }}
-                            >
-                                <option value="all">All Records</option>
-                                <option value="participant">Participant</option>
-                                <option value="subject">Subject (Project/Application)</option>
-                            </select>
-                        </div>
-
-                        {filterType !== "all" && (
-                            <div className="col-md-4 mb-3">
-                                <label htmlFor="filterId" className="form-label">
-                                    {filterType === "participant" ? "Participant ID" : "Subject ID"}
-                                </label>
-                                <input
-                                    id="filterId"
-                                    type="number"
-                                    className="form-control"
-                                    value={filterId}
-                                    onChange={(e) => setFilterId(e.target.value)}
-                                    placeholder="Enter ID"
-                                />
+                {/* Records Table */}
+                <div className="card border-0 shadow-sm">
+                    <div className="card-header bg-white border-bottom">
+                        <h6 className="mb-0 fw-semibold">Compliance Records</h6>
+                    </div>
+                    <div className="card-body p-0">
+                        {records.length === 0 ? (
+                            <p className="text-muted text-center py-5 mb-0">
+                                {filterType === "all" ? "Use the filter above to search for records" : "No records found"}
+                            </p>
+                        ) : (
+                            <div className="table-responsive">
+                                <table className="table table-hover align-middle mb-0">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th className="ps-4 small">Subject Type</th>
+                                            <th className="small">Subject ID</th>
+                                            <th className="small">Participant ID</th>
+                                            <th className="small">Result</th>
+                                            <th className="small">Notes</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {records.map((r) => (
+                                            <tr key={r.id}>
+                                                <td className="ps-4 small">{r.subjectType}</td>
+                                                <td className="small">{r.subjectId}</td>
+                                                <td className="small">{r.participantId}</td>
+                                                <td><span className={`badge ${resultBadge(r.result)}`}>{r.result}</span></td>
+                                                <td className="small text-muted">{r.notes || "—"}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
-
-                        <div className="col-md-4 mb-3 d-flex align-items-end">
-                            <button
-                                className="btn btn-outline-primary w-100"
-                                onClick={loadCompliance}
-                                disabled={loading}
-                            >
-                                Search
-                            </button>
-                        </div>
                     </div>
                 </div>
             </div>
-
-            {/* Compliance Records Table */}
-            <div className="card">
-                <div className="card-header">
-                    <h5 className="mb-0">Compliance Records</h5>
-                </div>
-                <div className="card-body">
-                    {complianceRecords.length === 0 ? (
-                        <p className="text-muted text-center">No compliance records found</p>
-                    ) : (
-                        <div className="table-responsive">
-                            <table className="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Subject Type</th>
-                                        <th>Subject ID</th>
-                                        <th>Participant ID</th>
-                                        <th>Result</th>
-                                        <th>Notes</th>
-                                        <th>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {complianceRecords.map((record) => (
-                                        <tr key={record.id}>
-                                            <td>{record.subjectType}</td>
-                                            <td>{record.subjectId}</td>
-                                            <td>{record.participantId}</td>
-                                            <td>
-                                                <span
-                                                    className={`badge bg-${getResultBadgeColor(record.result)}`}
-                                                >
-                                                    {record.result}
-                                                </span>
-                                            </td>
-                                            <td>{record.notes || "N/A"}</td>
-                                            <td>
-                                                <button className="btn btn-sm btn-info">View</button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
         </RequiredPermission>
     );
 }

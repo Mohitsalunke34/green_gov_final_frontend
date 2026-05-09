@@ -2,39 +2,34 @@ export default function Footer() {
     const currentYear = new Date().getFullYear();
 
     return (
-        <footer className="bg-dark text-white mt-5 py-4">
-            <div className="container-fluid">
+        <footer className="bg-success text-white py-4 mt-auto">
+            <div className="container-fluid px-4">
                 <div className="row">
                     <div className="col-md-4 mb-3 mb-md-0">
-                        <h6 className="fw-bold">🌱 GreenGov</h6>
-                        <p className="small text-muted">
+                        <h6 className="fw-bold mb-1">GreenGov</h6>
+                        <p className="small text-white-50 mb-0">
                             Government Green Initiatives Platform
                         </p>
                     </div>
                     <div className="col-md-4 mb-3 mb-md-0">
-                        <h6 className="fw-bold">Quick Links</h6>
-                        <ul className="list-unstyled small">
-                            <li><a href="/programs" className="text-decoration-none text-muted">Programs</a></li>
-                            <li><a href="/projects" className="text-decoration-none text-muted">Projects</a></li>
-                            <li><a href="/incentives" className="text-decoration-none text-muted">Incentives</a></li>
+                        <h6 className="fw-bold mb-2">Quick Links</h6>
+                        <ul className="list-unstyled small mb-0">
+                            <li><a href="/programs"    className="text-white-50 text-decoration-none">Programs</a></li>
+                            <li><a href="/projects"    className="text-white-50 text-decoration-none">Projects</a></li>
+                            <li><a href="/incentives"  className="text-white-50 text-decoration-none">Incentives</a></li>
+                            <li><a href="/compliance"  className="text-white-50 text-decoration-none">Compliance</a></li>
                         </ul>
                     </div>
                     <div className="col-md-4">
-                        <h6 className="fw-bold">Contact</h6>
-                        <p className="small text-muted mb-0">
-                            📧 support@greengov.gov.in
-                        </p>
-                        <p className="small text-muted">
-                            📞 1800-GREEN-GOV
-                        </p>
+                        <h6 className="fw-bold mb-2">Contact</h6>
+                        <p className="small text-white-50 mb-1">support@greengov.gov.in</p>
+                        <p className="small text-white-50 mb-0">1800-GREEN-GOV</p>
                     </div>
                 </div>
-                <hr className="bg-secondary" />
-                <div className="text-center small text-muted">
-                    <p className="mb-0">
-                        &copy; {currentYear} GreenGov. All rights reserved.
-                    </p>
-                </div>
+                <hr className="border-white border-opacity-25 my-3" />
+                <p className="text-center small text-white-50 mb-0">
+                    &copy; {currentYear} GreenGov — Ministry of Environment, Government of India
+                </p>
             </div>
         </footer>
     );

@@ -2,28 +2,20 @@ import { useState, useEffect } from "react";
 import { fetchAllPrograms, createProgram, updateProgramStatus } from "../api/programApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-import { PermissionGate, RequiredPermission } from "../components/PermissionGate";
-import { usePermission } from "../hooks/usePermission";
+import { RequiredPermission, PermissionGate } from "../components/PermissionGate";
 
 export default function ProgramsPage() {
-    const [programs, setPrograms] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState("");
+    const [programs, setPrograms]           = useState([]);
+    const [loading, setLoading]             = useState(true);
+    const [error, setError]                 = useState("");
+    const [success, setSuccess]             = useState("");
     const [showCreateForm, setShowCreateForm] = useState(false);
 
-    const { isProgramManager } = usePermission();
-
     const [formData, setFormData] = useState({
-        name: "",
-        description: "",
-        budget: "",
-        status: "ACTIVE",
+        title: "", description: "", startDate: "", endDate: "", budget: "", status: "ACTIVE", ownerUserId: "",
     });
 
-    useEffect(() => {
-        loadPrograms();
-    }, []);
+    useEffect(() => { loadPrograms(); }, []);
 
     const loadPrograms = async () => {
         try {
@@ -38,24 +30,16 @@ export default function ProgramsPage() {
         }
     };
 
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
+    const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
     const handleCreateProgram = async (e) => {
         e.preventDefault();
-        setError("");
-        setSuccess("");
-
+        setError(""); setSuccess("");
         try {
             setLoading(true);
             await createProgram(formData);
-            setSuccess("Program created successfully!");
-            setFormData({ name: "", description: "", budget: "", status: "ACTIVE" });
+            setSuccess("Program created successfully.");
+            setFormData({ title: "", description: "", startDate: "", endDate: "", budget: "", status: "ACTIVE", ownerUserId: "" });
             setShowCreateForm(false);
             loadPrograms();
         } catch (err) {
@@ -68,130 +52,120 @@ export default function ProgramsPage() {
     const handleStatusChange = async (programId, newStatus) => {
         try {
             await updateProgramStatus(programId, newStatus);
-            setSuccess(`Program status updated to ${newStatus}`);
+            setSuccess(`Program status updated to ${newStatus}.`);
             loadPrograms();
         } catch (err) {
-            setError(err.response?.data?.message || "Failed to update program status");
+            setError(err.response?.data?.message || "Failed to update status");
         }
     };
 
     if (loading && programs.length === 0) return <Loading />;
 
     return (
-        <RequiredPermission
-            authority="PROGRAM_MANAGER"
-            message="Only Program Managers can view programs. Contact your administrator if you need access."
-        >
+        <RequiredPermission authority="PROGRAM_MANAGER" message="Only Program Managers can access this page.">
             <div>
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                    <h2>Programs</h2>
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => setShowCreateForm(!showCreateForm)}
-                    >
-                        + New Program
+                {/* Page header */}
+                <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                    <div>
+                        <h4 className="fw-bold text-success mb-0">Programs</h4>
+                        <p className="text-muted small mb-0">Create and manage green initiative programs</p>
+                    </div>
+                    <button className="btn btn-success btn-sm" onClick={() => setShowCreateForm(!showCreateForm)}>
+                        {showCreateForm ? "Cancel" : "+ New Program"}
                     </button>
                 </div>
 
-                {error && <Alert message={error} type="danger" />}
+                {error   && <Alert message={error}   type="danger" />}
                 {success && <Alert message={success} type="success" />}
 
+                {/* Create Form */}
                 {showCreateForm && (
-                    <div className="card mb-4">
-                        <div className="card-header bg-info text-white">
-                            <h5 className="mb-0">Create New Program</h5>
+                    <div className="card border-0 shadow-sm mb-4">
+                        <div className="card-header bg-success text-white border-0">
+                            <h6 className="mb-0">Create New Program</h6>
                         </div>
-                        <div className="card-body">
+                        <div className="card-body p-4">
                             <form onSubmit={handleCreateProgram}>
-                                <div className="mb-3">
-                                    <label htmlFor="name" className="form-label">Program Name</label>
-                                    <input
-                                        id="name"
-                                        type="text"
-                                        className="form-control"
-                                        name="name"
-                                        value={formData.name}
-                                        onChange={handleInputChange}
-                                        required
-                                    />
+                                <div className="row g-3">
+                                    <div className="col-md-8">
+                                        <label htmlFor="prog-title" className="form-label small fw-semibold">Program Title</label>
+                                        <input id="prog-title" type="text" className="form-control" name="title"
+                                            value={formData.title} onChange={handleInputChange}
+                                            placeholder="e.g. Rooftop Solar Subsidy 2026" required />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="prog-owner" className="form-label small fw-semibold">Owner User ID</label>
+                                        <input id="prog-owner" type="number" className="form-control" name="ownerUserId"
+                                            value={formData.ownerUserId} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="col-12">
+                                        <label htmlFor="prog-desc" className="form-label small fw-semibold">Description</label>
+                                        <textarea id="prog-desc" className="form-control" name="description" rows="2"
+                                            value={formData.description} onChange={handleInputChange} />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="prog-start" className="form-label small fw-semibold">Start Date</label>
+                                        <input id="prog-start" type="date" className="form-control" name="startDate"
+                                            value={formData.startDate} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="prog-end" className="form-label small fw-semibold">End Date</label>
+                                        <input id="prog-end" type="date" className="form-control" name="endDate"
+                                            value={formData.endDate} onChange={handleInputChange} required />
+                                    </div>
+                                    <div className="col-md-4">
+                                        <label htmlFor="prog-budget" className="form-label small fw-semibold">Budget (INR)</label>
+                                        <input id="prog-budget" type="number" className="form-control" name="budget"
+                                            value={formData.budget} onChange={handleInputChange} />
+                                    </div>
                                 </div>
-
-                                <div className="mb-3">
-                                    <label htmlFor="description" className="form-label">Description</label>
-                                    <textarea
-                                        id="description"
-                                        className="form-control"
-                                        name="description"
-                                        value={formData.description}
-                                        onChange={handleInputChange}
-                                        rows="3"
-                                    />
+                                <div className="mt-3 d-flex gap-2">
+                                    <button type="submit" className="btn btn-success btn-sm" disabled={loading}>
+                                        {loading ? "Creating..." : "Create Program"}
+                                    </button>
+                                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setShowCreateForm(false)}>Cancel</button>
                                 </div>
-
-                                <div className="mb-3">
-                                    <label htmlFor="budget" className="form-label">Budget</label>
-                                    <input
-                                        id="budget"
-                                        type="number"
-                                        className="form-control"
-                                        name="budget"
-                                        value={formData.budget}
-                                        onChange={handleInputChange}
-                                    />
-                                </div>
-
-                                <button type="submit" className="btn btn-success" disabled={loading}>
-                                    {loading ? "Creating..." : "Create Program"}
-                                </button>
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary ms-2"
-                                    onClick={() => setShowCreateForm(false)}
-                                >
-                                    Cancel
-                                </button>
                             </form>
                         </div>
                     </div>
                 )}
 
-                <div className="card">
-                    <div className="card-header">
-                        <h5 className="mb-0">Active Programs</h5>
+                {/* Programs Table */}
+                <div className="card border-0 shadow-sm">
+                    <div className="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
+                        <h6 className="mb-0 fw-semibold">All Programs</h6>
+                        <button className="btn btn-outline-success btn-sm" onClick={loadPrograms}>Refresh</button>
                     </div>
-                    <div className="card-body">
+                    <div className="card-body p-0">
                         {programs.length === 0 ? (
-                            <p className="text-muted text-center">No programs found</p>
+                            <p className="text-muted text-center py-5 mb-0">No programs found</p>
                         ) : (
                             <div className="table-responsive">
-                                <table className="table table-striped">
-                                    <thead>
+                                <table className="table table-hover align-middle mb-0">
+                                    <thead className="table-light">
                                         <tr>
-                                            <th>Program Name</th>
-                                            <th>Description</th>
-                                            <th>Budget</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
+                                            <th className="ps-4 small">Title</th>
+                                            <th className="small">Description</th>
+                                            <th className="small">Budget</th>
+                                            <th className="small">Status</th>
+                                            <th className="small text-end pe-4">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {programs.map((program) => (
-                                            <tr key={program.id}>
-                                                <td>{program.name}</td>
-                                                <td>{program.description || "N/A"}</td>
-                                                <td>${program.budget ? program.budget.toLocaleString() : "0"}</td>
+                                        {programs.map((p) => (
+                                            <tr key={p.id}>
+                                                <td className="ps-4 small fw-semibold">{p.title || p.name}</td>
+                                                <td className="small text-muted">{p.description || "—"}</td>
+                                                <td className="small">₹{p.budget ? Number(p.budget).toLocaleString() : "—"}</td>
                                                 <td>
-                                                    <span className={`badge bg-${program.status === "ACTIVE" ? "success" : "warning"}`}>
-                                                        {program.status}
+                                                    <span className={`badge ${p.status === "ACTIVE" ? "bg-success" : p.status === "PAUSED" ? "bg-warning text-dark" : "bg-secondary"}`}>
+                                                        {p.status}
                                                     </span>
                                                 </td>
-                                                <td>
+                                                <td className="text-end pe-4">
                                                     <PermissionGate authority="PROGRAM_MANAGER">
-                                                        <select
-                                                            className="form-select form-select-sm"
-                                                            value={program.status}
-                                                            onChange={(e) => handleStatusChange(program.id, e.target.value)}
-                                                        >
+                                                        <select className="form-select form-select-sm" style={{ width: 130 }}
+                                                            value={p.status} onChange={(e) => handleStatusChange(p.id, e.target.value)}>
                                                             <option value="ACTIVE">Active</option>
                                                             <option value="PAUSED">Paused</option>
                                                             <option value="CLOSED">Closed</option>
@@ -210,4 +184,3 @@ export default function ProgramsPage() {
         </RequiredPermission>
     );
 }
-              

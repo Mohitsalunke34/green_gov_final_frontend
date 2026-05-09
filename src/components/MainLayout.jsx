@@ -1,28 +1,17 @@
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import Footer from "./Footer";
-import "../styles/MainLayout.css";
 
 export default function MainLayout({ children }) {
     return (
-        <div className="main-layout d-flex flex-column min-vh-100">
-            {/* Navbar */}
+        <div className="d-flex flex-column min-vh-100 bg-light">
             <Navbar />
-
-            {/* Main Content Area */}
-            <div className="layout-body flex-grow-1 d-flex">
-                {/* Sidebar */}
+            <div className="d-flex flex-grow-1">
                 <Sidebar />
-
-                {/* Main Content */}
-                <main className="main-content flex-grow-1">
-                    <div className="content-wrapper">
-                        {children}
-                    </div>
+                <main className="flex-grow-1 p-4" style={{ minWidth: 0 }}>
+                    {children}
                 </main>
             </div>
-
-            {/* Footer */}
             <Footer />
         </div>
     );

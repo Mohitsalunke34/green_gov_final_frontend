@@ -11,6 +11,8 @@ import IncentivesPage from "./pages/IncentivesPage";
 import CompliancePage from "./pages/CompliancePage";
 import AuditPage from "./pages/AuditPage";
 import ProfilePage from "./pages/ProfilePage";
+import ReportsPage from "./pages/ReportsPage";
+import ResourcesPage from "./pages/ResourcesPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PrivateRoute from "./auth/PrivateRoute";
 
@@ -101,6 +103,28 @@ function App() {
         }
       />
       
+      <Route
+        path="/reports"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ReportsPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/resources"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <ResourcesPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
 
       <Route
         path="/profile"

@@ -1,128 +1,130 @@
-import { useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+
+const FEATURES = [
+    {
+        title: "Program Management",
+        desc: "Create and administer green initiative programs with full lifecycle management.",
+    },
+    {
+        title: "Compliance Tracking",
+        desc: "Monitor compliance records, audit results, and regulatory adherence in real time.",
+    },
+    {
+        title: "Incentive Disbursement",
+        desc: "Process and track financial incentives for verified environmental participants.",
+    },
+    {
+        title: "Project Oversight",
+        desc: "Oversee sustainability projects from application to completion.",
+    },
+    {
+        title: "Reports & Analytics",
+        desc: "Generate structured reports and view system-wide environmental metrics.",
+    },
+    {
+        title: "Resource & Infrastructure",
+        desc: "Allocate physical resources and manage green infrastructure assets.",
+    },
+];
 
 export default function HomePage() {
     const navigate = useNavigate();
     const { isAuthenticated } = useAuth();
 
-    // If already logged in, redirect to dashboard
-    if (isAuthenticated) {
-        navigate("/dashboard");
-        return null;
-    }
+    useEffect(() => {
+        if (isAuthenticated) navigate("/dashboard");
+    }, [isAuthenticated, navigate]);
 
     return (
-        <div className="d-flex flex-column min-vh-100">
-            {/* Navbar */}
+        <div className="d-flex flex-column min-vh-100 bg-light">
             <Navbar />
 
-            {/* Main Hero Section */}
-            <main className="flex-grow-1">
-                <div className="container mt-5">
-                    <div className="row align-items-center justify-content-center">
-                        <div className="col-lg-8 text-center">
-                            <h1 className="display-4 fw-bold mb-4">
-                                Welcome to <span className="text-success">GreenGov</span>
-                            </h1>
-                            <p className="lead text-muted mb-5">
-                                A comprehensive platform for green initiative management, compliance tracking, and environmental program oversight.
+            {/* Hero */}
+            <div className="bg-success text-white py-5">
+                <div className="container py-4">
+                    <div className="row justify-content-center text-center">
+                        <div className="col-lg-8">
+                            <p className="text-white-50 text-uppercase small fw-semibold mb-2 ls-wider">
+                                Ministry of Environment — Government of India
                             </p>
-
-                            <div className="d-flex gap-3 justify-content-center mb-5">
-                                <button
-                                    className="btn btn-success btn-lg"
-                                    onClick={() => navigate("/login")}
-                                >
-                                    Login
-                                </button>
-                                <button
-                                    className="btn btn-outline-success btn-lg"
-                                    onClick={() => navigate("/register")}
-                                >
-                                    Register
-                                </button>
+                            <h1 className="display-5 fw-bold mb-3">GreenGov Platform</h1>
+                            <p className="lead text-white-75 mb-4" style={{ opacity: 0.85 }}>
+                                A unified portal for managing green initiatives, compliance tracking, and environmental program oversight across India.
+                            </p>
+                            <div className="d-flex gap-3 justify-content-center">
+                                <Link to="/login" className="btn btn-light btn-lg text-success fw-semibold px-4">
+                                    Sign In
+                                </Link>
+                                <Link to="/register" className="btn btn-outline-light btn-lg px-4">
+                                    Create Account
+                                </Link>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                            {/* Features Section */}
-                            <div className="row mt-5 pt-5">
-                                <div className="col-md-4 mb-4">
-                                    <div className="card h-100 border-0 shadow-sm">
-                                        <div className="card-body">
-                                            <div className="display-6 text-success mb-3">📋</div>
-                                            <h5 className="card-title">Program Management</h5>
-                                            <p className="card-text text-muted">
-                                                Create, manage, and track green initiatives with detailed program information and compliance metrics.
-                                            </p>
-                                        </div>
+            {/* Features Grid */}
+            <div className="container py-5">
+                <div className="row justify-content-center mb-4">
+                    <div className="col-lg-7 text-center">
+                        <h2 className="fw-bold text-success mb-2">Platform Capabilities</h2>
+                        <p className="text-muted">
+                            Role-based access to comprehensive green governance tools.
+                        </p>
+                    </div>
+                </div>
+                <div className="row g-4">
+                    {FEATURES.map((f) => (
+                        <div key={f.title} className="col-md-4">
+                            <div className="card border-0 shadow-sm h-100">
+                                <div className="card-body p-4">
+                                    <div className="bg-success bg-opacity-10 rounded-2 d-inline-block p-2 mb-3">
+                                        <div className="text-success fw-bold" style={{ width: 20, height: 20 }}></div>
                                     </div>
-                                </div>
-
-                                <div className="col-md-4 mb-4">
-                                    <div className="card h-100 border-0 shadow-sm">
-                                        <div className="card-body">
-                                            <div className="display-6 text-success mb-3">✓</div>
-                                            <h5 className="card-title">Compliance Tracking</h5>
-                                            <p className="card-text text-muted">
-                                                Monitor compliance status, audit results, and ensure adherence to environmental regulations.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="col-md-4 mb-4">
-                                    <div className="card h-100 border-0 shadow-sm">
-                                        <div className="card-body">
-                                            <div className="display-6 text-success mb-3">💰</div>
-                                            <h5 className="card-title">Incentive Management</h5>
-                                            <p className="card-text text-muted">
-                                                Manage disbursements and incentive programs for environmental participation and compliance.
-                                            </p>
-                                        </div>
-                                    </div>
+                                    <h6 className="fw-bold mb-2">{f.title}</h6>
+                                    <p className="text-muted small mb-0">{f.desc}</p>
                                 </div>
                             </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
 
-                            {/* Info Section */}
-                            <div className="row mt-5 pt-5">
-                                <div className="col-lg-10 mx-auto">
-                                    <div className="bg-light p-4 rounded">
-                                        <h5 className="mb-3">Role-Based Access</h5>
-                                        <p className="text-muted mb-3">
-                                            Different user roles have access to different features:
-                                        </p>
-                                        <div className="row text-start">
-                                            <div className="col-md-6">
-                                                <ul className="list-unstyled">
-                                                    <li className="mb-2">
-                                                        <strong>Citizens & Business Owners:</strong> Apply for programs and manage projects
-                                                    </li>
-                                                    <li className="mb-2">
-                                                        <strong>Program Managers:</strong> Create and manage programs
-                                                    </li>
-                                                </ul>
+            {/* Role Notice */}
+            <div className="bg-success bg-opacity-10 py-5">
+                <div className="container">
+                    <div className="row justify-content-center">
+                        <div className="col-lg-9">
+                            <div className="card border-success border-opacity-25 border shadow-sm">
+                                <div className="card-body p-4">
+                                    <h5 className="fw-bold text-success mb-3">Role-Based Access</h5>
+                                    <div className="row g-3">
+                                        {[
+                                            ["Citizens & Business Owners", "Apply for programs, manage projects and track application status."],
+                                            ["Program Managers", "Create programs, review applications, manage the full program lifecycle."],
+                                            ["Compliance Officers", "Create and manage compliance records for projects and applications."],
+                                            ["Audit Managers", "Initiate and close audit reviews based on compliance records."],
+                                            ["Disbursement Officers", "Process incentives and track financial disbursements."],
+                                            ["Administrators", "Approve officer registrations and manage system access."],
+                                        ].map(([role, desc]) => (
+                                            <div key={role} className="col-md-6">
+                                                <p className="fw-semibold small mb-0 text-success">{role}</p>
+                                                <p className="small text-muted mb-0">{desc}</p>
                                             </div>
-                                            <div className="col-md-6">
-                                                <ul className="list-unstyled">
-                                                    <li className="mb-2">
-                                                        <strong>Compliance Officers:</strong> Track compliance records and audits
-                                                    </li>
-                                                    <li className="mb-2">
-                                                        <strong>Audit Managers:</strong> Manage audit processes
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </main>
+            </div>
 
-            {/* Footer */}
             <Footer />
         </div>
     );
