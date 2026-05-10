@@ -31,12 +31,14 @@ export default function LoginPage() {
 
             let currentUserId = data.id || data.userId;
             let decodedUsername = data.username || username;
+            let decodedRoles = data.roles || [];
 
-            if (!currentUserId && typeof token === "string") {
+            if ((!currentUserId || !decodedRoles.length) && typeof token === "string") {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
-                    currentUserId = payload.userId || payload.id;
-                    decodedUsername = payload.username || payload.sub || username;
+                    currentUserId = currentUserId || payload.userId || payload.id;
+                    decodedUsername = decodedUsername || payload.username || payload.sub || username;
+                    decodedRoles = payload.roles || payload.authorities || decodedRoles;
                 } catch (decodeErr) {
                     throw new Error("Invalid token received from server.");
                 }
@@ -50,7 +52,8 @@ export default function LoginPage() {
             localStorage.setItem("userData", JSON.stringify({
                 id: currentUserId,
                 username: decodedUsername,
-                email: data.email || ""
+                email: data.email || "",
+                roles: decodedRoles
             }));
 
             if (!isAdmin) {
