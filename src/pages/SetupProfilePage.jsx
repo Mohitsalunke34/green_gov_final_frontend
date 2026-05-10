@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerParticipant } from "../api/participantApi";
 import Alert from "../components/Alert";
@@ -6,18 +6,38 @@ import Alert from "../components/Alert";
 export default function SetupProfilePage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem("userData") || "{}");
+    const token = localStorage.getItem("token") || "";
     const currentUserId = user.id || user.userId;
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [derivedEntityType, setDerivedEntityType] = useState("CITIZEN");
+
     const [formData, setFormData] = useState({
-        entityType: "CITIZEN",
         legalName: "",
         address: "",
         phone: "",
         email: user.email || "",
         otherContact: ""
     });
+
+    useEffect(() => {
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const roles = payload.roles || [];
+                const primaryRole = payload.primaryRole || "";
+                
+                if (roles.includes("ROLE_BUSINESS_OWNER") || primaryRole === "BUSINESS_OWNER") {
+                    setDerivedEntityType("BUSINESS_OWNER");
+                } else {
+                    setDerivedEntityType("CITIZEN");
+                }
+            } catch (e) {
+                console.error("Could not decode token to fetch role.");
+            }
+        }
+    }, [token]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -43,7 +63,7 @@ export default function SetupProfilePage() {
         try {
             await registerParticipant({
                 userId: currentUserId,
-                entityType: formData.entityType,
+                entityType: derivedEntityType,
                 legalName: formData.legalName,
                 address: formData.address,
                 contactInfo: contactJson
@@ -69,20 +89,6 @@ export default function SetupProfilePage() {
 
                 <div className="card shadow-sm border-0 rounded-3 p-4">
                     <form onSubmit={handleSubmit}>
-                        <div className="mb-3">
-                            <label className="form-label fw-semibold small">Entity Type <span className="text-danger">*</span></label>
-                            <select
-                                className="form-select bg-light"
-                                name="entityType"
-                                value={formData.entityType}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="CITIZEN">Citizen</option>
-                                <option value="BUSINESS_OWNER">Business Owner</option>
-                            </select>
-                        </div>
-
                         <div className="mb-3">
                             <label className="form-label fw-semibold small">Legal Name <span className="text-danger">*</span></label>
                             <input
