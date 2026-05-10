@@ -1,8 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
-import { getParticipantByUserId, updateParticipant, getParticipantDocuments } from "../api/participantApi";
+import {
+    getParticipantByUserId, updateParticipant, getParticipantDocuments,
+    getParticipantById, updateDocumentStatus, updateParticipantVerificationStatus,
+} from "../api/participantApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
 import DocumentUploadModal from "../components/DocumentUploadModal";
+import ContentGate from "../components/ContentGate";
 
 export default function ProfilePage() {
     const user = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -14,6 +18,14 @@ export default function ProfilePage() {
     const [error, setError] = useState("");
     const [editMode, setEditMode] = useState(false);
     const [showModal, setShowModal] = useState(false);
+
+    // Officer verification states
+    const [lookupId, setLookupId] = useState("");
+    const [lookupProfile, setLookupProfile] = useState(null);
+    const [lookupDocs, setLookupDocs] = useState([]);
+    const [lookupLoading, setLookupLoading] = useState(false);
+    const [lookupError, setLookupError] = useState("");
+    const [lookupSuccess, setLookupSuccess] = useState("");
     
     const [contactDetails, setContactDetails] = useState({ phone: "N/A", email: "N/A", other: "N/A" });
     
@@ -285,6 +297,140 @@ export default function ProfilePage() {
                 profileId={profile.id} 
                 onUploadSuccess={loadProfile} 
             />
+
+            {/* ── Officer Verification Section ── */}
+            <ContentGate authorities={["COMPLIANCE_OFFICER", "PROGRAM_MANAGER", "AUDIT_MANAGER", "ADMIN"]}>
+                <hr className="my-4" />
+                <h5 className="fw-bold text-success mb-3">Participant Verification (Officer)</h5>
+                <p className="text-muted small">Look up a participant by ID to verify their profile and documents.</p>
+
+                {lookupError   && <Alert message={lookupError}   type="danger" />}
+                {lookupSuccess && <Alert message={lookupSuccess} type="success" />}
+
+                <div className="row g-4">
+                    {/* Lookup */}
+                    <div className="col-md-12">
+                        <div className="card border-0 shadow-sm">
+                            <div className="card-header bg-success text-white"><h6 className="mb-0">Lookup Participant by ID</h6></div>
+                            <div className="card-body">
+                                <div className="d-flex gap-2" style={{ maxWidth: 400 }}>
+                                    <input type="number" className="form-control" placeholder="Participant ID"
+                                        value={lookupId} onChange={e => setLookupId(e.target.value)} />
+                                    <button className="btn btn-success" disabled={lookupLoading} onClick={async () => {
+                                        if (!lookupId) { setLookupError("Enter a participant ID"); return; }
+                                        setLookupError(""); setLookupSuccess(""); setLookupLoading(true);
+                                        try {
+                                            const p = await getParticipantById(lookupId);
+                                            setLookupProfile(p);
+                                            const d = await getParticipantDocuments(lookupId);
+                                            setLookupDocs(Array.isArray(d) ? d : []);
+                                        } catch (err) {
+                                            setLookupError(err.response?.data?.message || "Participant not found");
+                                            setLookupProfile(null); setLookupDocs([]);
+                                        } finally { setLookupLoading(false); }
+                                    }}>Fetch</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Profile Details + Verification */}
+                    {lookupProfile && (
+                        <div className="col-md-6">
+                            <div className="card border-0 shadow-sm h-100">
+                                <div className="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+                                    <h6 className="mb-0 fw-semibold">Participant #{lookupProfile.id}</h6>
+                                    <span className={`badge bg-${lookupProfile.status === "VERIFIED" ? "success" : lookupProfile.status === "REJECTED" ? "danger" : "warning"}`}>
+                                        {lookupProfile.status || "PENDING"}
+                                    </span>
+                                </div>
+                                <div className="card-body">
+                                    <div className="mb-2"><span className="text-muted small">Legal Name:</span> <strong>{lookupProfile.legalName || "N/A"}</strong></div>
+                                    <div className="mb-2"><span className="text-muted small">Entity Type:</span> <strong>{lookupProfile.entityType || "N/A"}</strong></div>
+                                    <div className="mb-2"><span className="text-muted small">Address:</span> <strong>{lookupProfile.address || "N/A"}</strong></div>
+                                    <div className="mb-3"><span className="text-muted small">Contact:</span> <strong>{lookupProfile.contactInfo || "N/A"}</strong></div>
+                                    <hr />
+                                    <p className="fw-semibold small text-muted mb-2">Update Profile Verification Status</p>
+                                    <div className="d-flex gap-2">
+                                        <button className="btn btn-success btn-sm" disabled={lookupLoading}
+                                            onClick={async () => {
+                                                setLookupError(""); setLookupSuccess(""); setLookupLoading(true);
+                                                try { await updateParticipantVerificationStatus(lookupProfile.id, "VERIFIED"); setLookupSuccess("Profile verified!"); setLookupProfile({ ...lookupProfile, status: "VERIFIED" }); }
+                                                catch (err) { setLookupError(err.response?.data?.message || "Failed to verify"); }
+                                                finally { setLookupLoading(false); }
+                                            }}>✅ Verify Profile</button>
+                                        <button className="btn btn-danger btn-sm" disabled={lookupLoading}
+                                            onClick={async () => {
+                                                setLookupError(""); setLookupSuccess(""); setLookupLoading(true);
+                                                try { await updateParticipantVerificationStatus(lookupProfile.id, "REJECTED"); setLookupSuccess("Profile rejected."); setLookupProfile({ ...lookupProfile, status: "REJECTED" }); }
+                                                catch (err) { setLookupError(err.response?.data?.message || "Failed to reject"); }
+                                                finally { setLookupLoading(false); }
+                                            }}>❌ Reject Profile</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Documents + Verification */}
+                    {lookupProfile && (
+                        <div className="col-md-6">
+                            <div className="card border-0 shadow-sm h-100">
+                                <div className="card-header bg-white border-bottom">
+                                    <h6 className="mb-0 fw-semibold">Documents ({lookupDocs.length})</h6>
+                                </div>
+                                <div className="card-body p-0">
+                                    {lookupDocs.length === 0 ? (
+                                        <p className="text-muted text-center py-4 mb-0">No documents found</p>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="table table-hover align-middle mb-0">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th className="ps-3 small">Doc ID</th>
+                                                        <th className="small">Type</th>
+                                                        <th className="small">Status</th>
+                                                        <th className="small text-end pe-3">Verify</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {lookupDocs.map(doc => (
+                                                        <tr key={doc.id}>
+                                                            <td className="ps-3 small">#{doc.id}</td>
+                                                            <td className="small">{doc.documentType}</td>
+                                                            <td>
+                                                                <span className={`badge bg-${doc.verificationStatus === "VERIFIED" ? "success" : doc.verificationStatus === "REJECTED" ? "danger" : "warning"}`}>
+                                                                    {doc.verificationStatus || doc.status || "PENDING"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="text-end pe-3">
+                                                                <div className="btn-group btn-group-sm">
+                                                                    <button className="btn btn-outline-success" title="Verify"
+                                                                        onClick={async () => {
+                                                                            setLookupError(""); setLookupSuccess("");
+                                                                            try { await updateDocumentStatus(lookupProfile.id, doc.id, "VERIFIED"); setLookupSuccess(`Document #${doc.id} verified`); const d = await getParticipantDocuments(lookupProfile.id); setLookupDocs(Array.isArray(d) ? d : []); }
+                                                                            catch (err) { setLookupError(err.response?.data?.message || "Failed"); }
+                                                                        }}>✅</button>
+                                                                    <button className="btn btn-outline-danger" title="Reject"
+                                                                        onClick={async () => {
+                                                                            setLookupError(""); setLookupSuccess("");
+                                                                            try { await updateDocumentStatus(lookupProfile.id, doc.id, "REJECTED"); setLookupSuccess(`Document #${doc.id} rejected`); const d = await getParticipantDocuments(lookupProfile.id); setLookupDocs(Array.isArray(d) ? d : []); }
+                                                                            catch (err) { setLookupError(err.response?.data?.message || "Failed"); }
+                                                                        }}>❌</button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </ContentGate>
         </div>
     );
 }

@@ -50,7 +50,7 @@ export const updateParticipantVerificationStatus = async (
   status
 ) => {
   const res = await api.put(
-    `/api/participants/${participantId}/status`,
+    `/api/participants/${participantId}/verification-status`,
     { status }
   );
   return res.data;
