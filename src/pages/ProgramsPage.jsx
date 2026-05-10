@@ -1,25 +1,39 @@
 import { useState, useEffect } from "react";
-import { fetchAllPrograms, createProgram, updateProgramStatus, updateProgram, deleteProgram, deductBudget, programExists } from "../api/programApi";
+import {
+    fetchAllPrograms, createProgram, updateProgramStatus,
+    updateProgram, deleteProgram, getProgramById,
+    deductBudget, programExists,
+} from "../api/programApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
 import ActionButton from "../components/ActionButton";
 import ContentGate from "../components/ContentGate";
 
 export default function ProgramsPage() {
-    const [programs, setPrograms]             = useState([]);
-    const [loading, setLoading]               = useState(true);
-    const [error, setError]                   = useState("");
-    const [success, setSuccess]               = useState("");
-    const [showCreateForm, setShowCreateForm] = useState(false);
-    const [editingProgram, setEditingProgram] = useState(null);
-    const [deductProgramId, setDeductProgramId] = useState("");
-    const [deductAmount, setDeductAmount]     = useState("");
-    const [existsId, setExistsId]             = useState("");
-    const [existsResult, setExistsResult]     = useState(null);
+    const [programs, setPrograms]               = useState([]);
+    const [loading, setLoading]                 = useState(true);
+    const [error, setError]                     = useState("");
+    const [success, setSuccess]                 = useState("");
+    const [showCreateForm, setShowCreateForm]   = useState(false);
+    const [editingProgram, setEditingProgram]   = useState(null);
 
-    const [formData, setFormData] = useState({
-        title: "", description: "", startDate: "", endDate: "", budget: "", status: "ACTIVE", ownerUserId: "",
-    });
+    // Fetch by ID
+    const [fetchId, setFetchId]                 = useState("");
+    const [fetchedProgram, setFetchedProgram]   = useState(null);
+
+    // Deduct budget
+    const [deductProgramId, setDeductProgramId] = useState("");
+    const [deductAmount, setDeductAmount]       = useState("");
+
+    // Check exists
+    const [existsId, setExistsId]               = useState("");
+    const [existsResult, setExistsResult]       = useState(null);
+
+    const emptyForm = {
+        title: "", description: "", startDate: "", endDate: "",
+        budget: "", status: "ACTIVE", ownerUserId: "",
+    };
+    const [formData, setFormData] = useState({ ...emptyForm });
 
     useEffect(() => { loadPrograms(); }, []);
 
@@ -32,21 +46,29 @@ export default function ProgramsPage() {
     const handleInputChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
     const clearMessages = () => { setError(""); setSuccess(""); };
 
+    /* ── Create ── */
     const handleCreateProgram = async (e) => {
         e.preventDefault(); clearMessages();
-        try { setLoading(true); await createProgram(formData); setSuccess("Program created successfully."); setFormData({ title: "", description: "", startDate: "", endDate: "", budget: "", status: "ACTIVE", ownerUserId: "" }); setShowCreateForm(false); loadPrograms(); }
-        catch (err) { setError(err.response?.data?.message || "Failed to create program"); }
+        try {
+            setLoading(true);
+            await createProgram(formData);
+            setSuccess("Program created successfully.");
+            setFormData({ ...emptyForm }); setShowCreateForm(false);
+            loadPrograms();
+        } catch (err) { setError(err.response?.data?.message || "Failed to create program"); }
         finally { setLoading(false); }
     };
 
+    /* ── Status Change ── */
     const handleStatusChange = async (programId, newStatus) => {
-        try { await updateProgramStatus(programId, newStatus); setSuccess(`Program status updated to ${newStatus}.`); loadPrograms(); }
+        clearMessages();
+        try { await updateProgramStatus(programId, newStatus); setSuccess(`Program #${programId} status updated to ${newStatus}.`); loadPrograms(); }
         catch (err) { setError(err.response?.data?.message || "Failed to update status"); }
     };
 
-    // ── Edit Program ──
+    /* ── Edit ── */
     const startEdit = (p) => {
-        setEditingProgram(p.id);
+        setEditingProgram(p.programId);
         setFormData({
             title: p.title || "", description: p.description || "",
             startDate: p.startDate ? p.startDate.split("T")[0] : "",
@@ -59,12 +81,16 @@ export default function ProgramsPage() {
 
     const handleUpdateProgram = async (e) => {
         e.preventDefault(); clearMessages();
-        try { setLoading(true); await updateProgram(editingProgram, formData); setSuccess("Program updated successfully."); setEditingProgram(null); loadPrograms(); }
-        catch (err) { setError(err.response?.data?.message || "Failed to update program"); }
+        try {
+            setLoading(true);
+            await updateProgram(editingProgram, formData);
+            setSuccess("Program updated successfully.");
+            setEditingProgram(null); loadPrograms();
+        } catch (err) { setError(err.response?.data?.message || "Failed to update program"); }
         finally { setLoading(false); }
     };
 
-    // ── Delete Program ──
+    /* ── Delete ── */
     const handleDeleteProgram = async (programId) => {
         if (!window.confirm(`Delete program #${programId}? This cannot be undone.`)) return;
         clearMessages();
@@ -72,27 +98,41 @@ export default function ProgramsPage() {
         catch (err) { setError(err.response?.data?.message || "Failed to delete program"); }
     };
 
-    // ── Deduct Budget ──
+    /* ── Fetch by ID ── */
+    const handleFetchById = async () => {
+        if (!fetchId) { setError("Enter a Program ID"); return; }
+        clearMessages();
+        try { const data = await getProgramById(fetchId); setFetchedProgram(data); }
+        catch (err) { setError(err.response?.data?.message || "Program not found"); setFetchedProgram(null); }
+    };
+
+    /* ── Deduct Budget ── */
     const handleDeductBudget = async () => {
         if (!deductProgramId || !deductAmount) { setError("Enter both Program ID and Amount"); return; }
         clearMessages();
-        try { await deductBudget(deductProgramId, Number(deductAmount)); setSuccess(`₹${Number(deductAmount).toLocaleString()} deducted from program #${deductProgramId}`); setDeductProgramId(""); setDeductAmount(""); loadPrograms(); }
-        catch (err) { setError(err.response?.data?.message || "Failed to deduct budget"); }
+        try {
+            await deductBudget(deductProgramId, Number(deductAmount));
+            setSuccess(`₹${Number(deductAmount).toLocaleString()} deducted from program #${deductProgramId}`);
+            setDeductProgramId(""); setDeductAmount(""); loadPrograms();
+        } catch (err) { setError(err.response?.data?.message || "Failed to deduct budget"); }
     };
 
-    // ── Check Program Exists ──
+    /* ── Check Exists ── */
     const handleCheckExists = async () => {
         if (!existsId) { setError("Enter a Program ID"); return; }
         clearMessages();
         try { const result = await programExists(existsId); setExistsResult(result); }
-        catch (err) { setExistsResult(false); }
+        catch { setExistsResult(false); }
     };
+
+    const statusBadge = (s) =>
+        s === "ACTIVE" ? "bg-success" : s === "INACTIVE" ? "bg-secondary" : s === "PAUSED" ? "bg-warning text-dark" : "bg-secondary";
 
     if (loading && programs.length === 0) return <Loading />;
 
     return (
         <div>
-            {/* Page header */}
+            {/* Header */}
             <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
                 <div>
                     <h4 className="fw-bold text-success mb-0">Programs</h4>
@@ -108,7 +148,7 @@ export default function ProgramsPage() {
             {error   && <Alert message={error}   type="danger" />}
             {success && <Alert message={success} type="success" />}
 
-            {/* Create Form — PROGRAM_MANAGER */}
+            {/* ── Create Form ── */}
             <ContentGate authority="PROGRAM_MANAGER">
                 {showCreateForm && !editingProgram && (
                     <div className="card border-0 shadow-sm mb-4">
@@ -117,28 +157,28 @@ export default function ProgramsPage() {
                             <form onSubmit={handleCreateProgram}>
                                 <div className="row g-3">
                                     <div className="col-md-8">
-                                        <label htmlFor="prog-title" className="form-label small fw-semibold">Program Title</label>
-                                        <input id="prog-title" type="text" className="form-control" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Rooftop Solar Subsidy 2026" required />
+                                        <label className="form-label small fw-semibold">Program Title</label>
+                                        <input type="text" className="form-control" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Rooftop Solar Subsidy 2026" required />
                                     </div>
                                     <div className="col-md-4">
-                                        <label htmlFor="prog-owner" className="form-label small fw-semibold">Owner User ID</label>
-                                        <input id="prog-owner" type="number" className="form-control" name="ownerUserId" value={formData.ownerUserId} onChange={handleInputChange} required />
+                                        <label className="form-label small fw-semibold">Owner User ID</label>
+                                        <input type="number" className="form-control" name="ownerUserId" value={formData.ownerUserId} onChange={handleInputChange} required />
                                     </div>
                                     <div className="col-12">
-                                        <label htmlFor="prog-desc" className="form-label small fw-semibold">Description</label>
-                                        <textarea id="prog-desc" className="form-control" name="description" rows="2" value={formData.description} onChange={handleInputChange} />
+                                        <label className="form-label small fw-semibold">Description</label>
+                                        <textarea className="form-control" name="description" rows="2" value={formData.description} onChange={handleInputChange} />
                                     </div>
                                     <div className="col-md-4">
-                                        <label htmlFor="prog-start" className="form-label small fw-semibold">Start Date</label>
-                                        <input id="prog-start" type="date" className="form-control" name="startDate" value={formData.startDate} onChange={handleInputChange} required />
+                                        <label className="form-label small fw-semibold">Start Date</label>
+                                        <input type="date" className="form-control" name="startDate" value={formData.startDate} onChange={handleInputChange} required />
                                     </div>
                                     <div className="col-md-4">
-                                        <label htmlFor="prog-end" className="form-label small fw-semibold">End Date</label>
-                                        <input id="prog-end" type="date" className="form-control" name="endDate" value={formData.endDate} onChange={handleInputChange} required />
+                                        <label className="form-label small fw-semibold">End Date</label>
+                                        <input type="date" className="form-control" name="endDate" value={formData.endDate} onChange={handleInputChange} required />
                                     </div>
                                     <div className="col-md-4">
-                                        <label htmlFor="prog-budget" className="form-label small fw-semibold">Budget (INR)</label>
-                                        <input id="prog-budget" type="number" className="form-control" name="budget" value={formData.budget} onChange={handleInputChange} />
+                                        <label className="form-label small fw-semibold">Budget (INR)</label>
+                                        <input type="number" className="form-control" name="budget" value={formData.budget} onChange={handleInputChange} />
                                     </div>
                                 </div>
                                 <div className="mt-3 d-flex gap-2">
@@ -150,7 +190,7 @@ export default function ProgramsPage() {
                     </div>
                 )}
 
-                {/* Edit Form — PROGRAM_MANAGER */}
+                {/* ── Edit Form ── */}
                 {editingProgram && (
                     <div className="card border-0 shadow-sm mb-4">
                         <div className="card-header bg-warning text-dark border-0"><h6 className="mb-0">Edit Program #{editingProgram}</h6></div>
@@ -185,8 +225,7 @@ export default function ProgramsPage() {
                                         <label className="form-label small fw-semibold">Status</label>
                                         <select className="form-select" name="status" value={formData.status} onChange={handleInputChange}>
                                             <option value="ACTIVE">Active</option>
-                                            <option value="PAUSED">Paused</option>
-                                            <option value="CLOSED">Closed</option>
+                                            <option value="INACTIVE">Inactive</option>
                                         </select>
                                     </div>
                                 </div>
@@ -200,7 +239,7 @@ export default function ProgramsPage() {
                 )}
             </ContentGate>
 
-            {/* Programs Table */}
+            {/* ── Programs Table ── */}
             <div className="card border-0 shadow-sm mb-4">
                 <div className="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
                     <h6 className="mb-0 fw-semibold">All Programs</h6>
@@ -217,37 +256,40 @@ export default function ProgramsPage() {
                                         <th className="ps-4 small">ID</th>
                                         <th className="small">Title</th>
                                         <th className="small">Description</th>
+                                        <th className="small">Start</th>
+                                        <th className="small">End</th>
                                         <th className="small">Budget</th>
+                                        <th className="small">Remaining</th>
                                         <th className="small">Status</th>
-                                        <th className="small text-end pe-4">Actions</th>
+                                        <ContentGate authority="PROGRAM_MANAGER">
+                                            <th className="small text-end pe-4">Actions</th>
+                                        </ContentGate>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {programs.map((p) => (
-                                        <tr key={p.id}>
-                                            <td className="ps-4 small text-muted">#{p.id}</td>
-                                            <td className="small fw-semibold">{p.title || p.name}</td>
-                                            <td className="small text-muted" style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description || "—"}</td>
+                                        <tr key={p.programId}>
+                                            <td className="ps-4 small text-muted">#{p.programId}</td>
+                                            <td className="small fw-semibold">{p.title}</td>
+                                            <td className="small text-muted" style={{ maxWidth: 180, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.description || "—"}</td>
+                                            <td className="small">{p.startDate ? new Date(p.startDate).toLocaleDateString() : "—"}</td>
+                                            <td className="small">{p.endDate ? new Date(p.endDate).toLocaleDateString() : "—"}</td>
                                             <td className="small">₹{p.budget ? Number(p.budget).toLocaleString() : "—"}</td>
-                                            <td>
-                                                <span className={`badge ${p.status === "ACTIVE" ? "bg-success" : p.status === "PAUSED" ? "bg-warning text-dark" : "bg-secondary"}`}>
-                                                    {p.status}
-                                                </span>
-                                            </td>
-                                            <td className="text-end pe-4">
-                                                <ContentGate authority="PROGRAM_MANAGER">
-                                                    <div className="d-flex gap-1 justify-content-end">
+                                            <td className="small">₹{p.remainingProgramBudget != null ? Number(p.remainingProgramBudget).toLocaleString() : "—"}</td>
+                                            <td><span className={`badge ${statusBadge(p.status)}`}>{p.status}</span></td>
+                                            <ContentGate authority="PROGRAM_MANAGER">
+                                                <td className="text-end pe-4">
+                                                    <div className="d-flex gap-1 justify-content-end flex-nowrap">
                                                         <select className="form-select form-select-sm" style={{ width: 110 }}
-                                                            value={p.status} onChange={(e) => handleStatusChange(p.id, e.target.value)}>
+                                                            value={p.status} onChange={(e) => handleStatusChange(p.programId, e.target.value)}>
                                                             <option value="ACTIVE">Active</option>
-                                                            <option value="PAUSED">Paused</option>
-                                                            <option value="CLOSED">Closed</option>
+                                                            <option value="INACTIVE">Inactive</option>
                                                         </select>
                                                         <button className="btn btn-sm btn-outline-warning" title="Edit" onClick={() => startEdit(p)}>✏️</button>
-                                                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteProgram(p.id)}>🗑️</button>
+                                                        <button className="btn btn-sm btn-outline-danger" title="Delete" onClick={() => handleDeleteProgram(p.programId)}>🗑️</button>
                                                     </div>
-                                                </ContentGate>
-                                            </td>
+                                                </td>
+                                            </ContentGate>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -257,11 +299,39 @@ export default function ProgramsPage() {
                 </div>
             </div>
 
-            {/* Deduct Budget & Check Exists — PROGRAM_MANAGER */}
+            {/* ── Manager Tools ── */}
             <ContentGate authority="PROGRAM_MANAGER">
-                <div className="row g-4">
+                <div className="row g-4 mb-4">
+                    {/* Fetch by ID */}
                     <div className="col-md-6">
-                        <div className="card border-0 shadow-sm">
+                        <div className="card border-0 shadow-sm h-100">
+                            <div className="card-header bg-success text-white"><h6 className="mb-0">Fetch Program by ID</h6></div>
+                            <div className="card-body">
+                                <div className="d-flex gap-2 mb-3">
+                                    <input type="number" className="form-control form-control-sm" value={fetchId} onChange={e => { setFetchId(e.target.value); setFetchedProgram(null); }} placeholder="Program ID" />
+                                    <button className="btn btn-success btn-sm" onClick={handleFetchById}>Fetch</button>
+                                </div>
+                                {fetchedProgram && (
+                                    <div className="bg-light rounded p-3">
+                                        <div className="row g-2 small">
+                                            <div className="col-6"><span className="text-muted">ID:</span> <strong>#{fetchedProgram.programId}</strong></div>
+                                            <div className="col-6"><span className="text-muted">Status:</span> <span className={`badge ${statusBadge(fetchedProgram.status)}`}>{fetchedProgram.status}</span></div>
+                                            <div className="col-12"><span className="text-muted">Title:</span> <strong>{fetchedProgram.title}</strong></div>
+                                            <div className="col-12"><span className="text-muted">Description:</span> {fetchedProgram.description || "—"}</div>
+                                            <div className="col-6"><span className="text-muted">Budget:</span> ₹{fetchedProgram.budget ? Number(fetchedProgram.budget).toLocaleString() : "—"}</div>
+                                            <div className="col-6"><span className="text-muted">Remaining:</span> ₹{fetchedProgram.remainingProgramBudget != null ? Number(fetchedProgram.remainingProgramBudget).toLocaleString() : "—"}</div>
+                                            <div className="col-6"><span className="text-muted">Start:</span> {fetchedProgram.startDate || "—"}</div>
+                                            <div className="col-6"><span className="text-muted">End:</span> {fetchedProgram.endDate || "—"}</div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Deduct Budget */}
+                    <div className="col-md-6">
+                        <div className="card border-0 shadow-sm h-100">
                             <div className="card-header bg-success text-white"><h6 className="mb-0">Deduct Budget</h6></div>
                             <div className="card-body">
                                 <div className="row g-2 align-items-end">
@@ -280,6 +350,8 @@ export default function ProgramsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Check Program Exists */}
                     <div className="col-md-6">
                         <div className="card border-0 shadow-sm">
                             <div className="card-header bg-success text-white"><h6 className="mb-0">Check Program Exists</h6></div>
