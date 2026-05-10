@@ -14,7 +14,7 @@ import {
 } from "../api/disbursementApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-import { PermissionGate } from "../components/PermissionGate";
+import ContentGate from "../components/ContentGate";
 import { useAuth } from "../auth/AuthContext";
 
 export default function IncentivesPage() {
@@ -231,9 +231,9 @@ export default function IncentivesPage() {
                                             <th>Amount</th>
                                             <th>Status</th>
                                             <th>Created</th>
-                                            <PermissionGate authority="DISBURSEMENT_OFFICER">
+                                            <ContentGate authority="DISBURSEMENT_OFFICER">
                                                 <th>Action</th>
-                                            </PermissionGate>
+                                            </ContentGate>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -244,7 +244,7 @@ export default function IncentivesPage() {
                                                 <td>₹{inc.amount?.toLocaleString()}</td>
                                                 <td><span className={`badge bg-${badgeColor(inc.status)}`}>{inc.status || "PENDING"}</span></td>
                                                 <td>{inc.createdAt ? new Date(inc.createdAt).toLocaleDateString() : "—"}</td>
-                                                <PermissionGate authority="DISBURSEMENT_OFFICER">
+                                                <ContentGate authority="DISBURSEMENT_OFFICER">
                                                     <td>
                                                         <button
                                                             className="btn btn-sm btn-outline-danger"
@@ -253,7 +253,7 @@ export default function IncentivesPage() {
                                                             Delete
                                                         </button>
                                                     </td>
-                                                </PermissionGate>
+                                                </ContentGate>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -266,28 +266,33 @@ export default function IncentivesPage() {
 
             {/* Create Incentive */}
             {!loading && activeTab === "create" && (
-                <div className="card border-0 shadow-sm" style={{ maxWidth: 500 }}>
-                    <div className="card-header bg-success text-white">
-                        <h6 className="mb-0">Create New Incentive</h6>
+                <ContentGate
+                    authority="DISBURSEMENT_OFFICER"
+                    fallback={<div className="alert alert-info">Only Disbursement Officers can create incentives.</div>}
+                >
+                    <div className="card border-0 shadow-sm" style={{ maxWidth: 500 }}>
+                        <div className="card-header bg-success text-white">
+                            <h6 className="mb-0">Create New Incentive</h6>
+                        </div>
+                        <div className="card-body">
+                            <form onSubmit={handleCreateIncentive}>
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">Application ID</label>
+                                    <input type="number" className="form-control" value={createForm.applicationId}
+                                        onChange={e => setCreateForm({ ...createForm, applicationId: e.target.value })} required />
+                                </div>
+                                <div className="mb-3">
+                                    <label className="form-label fw-semibold">Amount (₹)</label>
+                                    <input type="number" className="form-control" value={createForm.amount}
+                                        onChange={e => setCreateForm({ ...createForm, amount: e.target.value })} required />
+                                </div>
+                                <button type="submit" className="btn btn-success w-100" disabled={loading}>
+                                    {loading ? "Creating..." : "Create Incentive"}
+                                </button>
+                            </form>
+                        </div>
                     </div>
-                    <div className="card-body">
-                        <form onSubmit={handleCreateIncentive}>
-                            <div className="mb-3">
-                                <label className="form-label fw-semibold">Application ID</label>
-                                <input type="number" className="form-control" value={createForm.applicationId}
-                                    onChange={e => setCreateForm({ ...createForm, applicationId: e.target.value })} required />
-                            </div>
-                            <div className="mb-3">
-                                <label className="form-label fw-semibold">Amount (₹)</label>
-                                <input type="number" className="form-control" value={createForm.amount}
-                                    onChange={e => setCreateForm({ ...createForm, amount: e.target.value })} required />
-                            </div>
-                            <button type="submit" className="btn btn-success w-100" disabled={loading}>
-                                {loading ? "Creating..." : "Create Incentive"}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                </ContentGate>
             )}
 
             {/* Lookup Tab */}
@@ -354,48 +359,54 @@ export default function IncentivesPage() {
                         </div>
                     </div>
 
-                    {/* Delete */}
-                    <div className="col-md-4">
-                        <div className="card border-0 shadow-sm">
-                            <div className="card-header bg-danger text-white"><h6 className="mb-0">Delete Incentive</h6></div>
-                            <div className="card-body">
-                                <div className="d-flex gap-2">
-                                    <input type="number" className="form-control" placeholder="Incentive ID"
-                                        value={deleteId} onChange={e => setDeleteId(e.target.value)} />
-                                    <button className="btn btn-danger" onClick={handleDeleteIncentive}>Delete</button>
+                    {/* Delete — DISBURSEMENT_OFFICER only */}
+                    <ContentGate authority="DISBURSEMENT_OFFICER">
+                        <div className="col-md-4">
+                            <div className="card border-0 shadow-sm">
+                                <div className="card-header bg-danger text-white"><h6 className="mb-0">Delete Incentive</h6></div>
+                                <div className="card-body">
+                                    <div className="d-flex gap-2">
+                                        <input type="number" className="form-control" placeholder="Incentive ID"
+                                            value={deleteId} onChange={e => setDeleteId(e.target.value)} />
+                                        <button className="btn btn-danger" onClick={handleDeleteIncentive}>Delete</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </ContentGate>
                 </div>
             )}
 
             {/* Disbursements Tab */}
             {!loading && activeTab === "disbursements" && (
                 <div className="row g-4">
-                    {/* Create Disbursement */}
-                    <div className="col-md-5">
-                        <div className="card border-0 shadow-sm">
-                            <div className="card-header bg-success text-white"><h6 className="mb-0">Create Disbursement</h6></div>
-                            <div className="card-body">
-                                <form onSubmit={handleCreateDisbursement}>
-                                    <div className="mb-3">
-                                        <label className="form-label">Incentive ID</label>
-                                        <input type="number" className="form-control" value={disbForm.incentiveId}
-                                            onChange={e => setDisbForm({ ...disbForm, incentiveId: e.target.value })} required />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Amount (₹)</label>
-                                        <input type="number" className="form-control" value={disbForm.amount}
-                                            onChange={e => setDisbForm({ ...disbForm, amount: e.target.value })} required />
-                                    </div>
-                                    <button type="submit" className="btn btn-success w-100" disabled={loading}>
-                                        {loading ? "Creating..." : "Create Disbursement"}
-                                    </button>
-                                </form>
+                    {/* Create Disbursement — DISBURSEMENT_OFFICER only */}
+                    <ContentGate authority="DISBURSEMENT_OFFICER"
+                        fallback={<div className="col-md-5"><div className="alert alert-info">Only Disbursement Officers can create disbursements.</div></div>}
+                    >
+                        <div className="col-md-5">
+                            <div className="card border-0 shadow-sm">
+                                <div className="card-header bg-success text-white"><h6 className="mb-0">Create Disbursement</h6></div>
+                                <div className="card-body">
+                                    <form onSubmit={handleCreateDisbursement}>
+                                        <div className="mb-3">
+                                            <label className="form-label">Incentive ID</label>
+                                            <input type="number" className="form-control" value={disbForm.incentiveId}
+                                                onChange={e => setDisbForm({ ...disbForm, incentiveId: e.target.value })} required />
+                                        </div>
+                                        <div className="mb-3">
+                                            <label className="form-label">Amount (₹)</label>
+                                            <input type="number" className="form-control" value={disbForm.amount}
+                                                onChange={e => setDisbForm({ ...disbForm, amount: e.target.value })} required />
+                                        </div>
+                                        <button type="submit" className="btn btn-success w-100" disabled={loading}>
+                                            {loading ? "Creating..." : "Create Disbursement"}
+                                        </button>
+                                    </form>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    </ContentGate>
 
                     {/* Disbursement History by Incentive */}
                     <div className="col-md-7">

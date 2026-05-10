@@ -2,21 +2,24 @@
 
 ## Overview
 
-Instead of restricting sidebar/page access based on roles, all authenticated users can access all pages. Inside each page, specific UI elements and actions are conditionally rendered based on user authority/role using reusable components.
+All authenticated users can access ALL pages via the sidebar. Inside each page, specific UI elements and actions are conditionally rendered based on user authority/role using two reusable components: `ActionButton` and `ContentGate`.
 
-## Key Changes
+**View is always enabled. Edit/Create/Delete are gated by authority/role.**
 
-### 1. Backend Security (Spring Security)
-- All pages/routes are protected with `.authenticated()` - any logged-in user can access
-- Specific endpoints enforce authority via `.hasAuthority()` or `.hasRole()`
-- Example: POST `/api/programs/**` requires `PROGRAM_MANAGER` authority
+## Permission System (3 Files)
 
-### 2. Frontend Architecture
+| File | Purpose |
+|------|---------|
+| `hooks/usePermission.js` | Core hook — provides `hasRole()`, `hasAuthority()`, etc. |
+| `components/ActionButton.jsx` | Permission-gated button — hides if user lacks permission |
+| `components/ContentGate.jsx` | Permission-gated content section — hides children if no permission |
 
-#### Components
+## Usage Examples
 
-**ActionButton** - Render buttons conditionally based on permissions
+### ActionButton — For action elements (buttons, links)
+
 ```jsx
+// Only PROGRAM_MANAGER sees this button
 <ActionButton
     authority="PROGRAM_MANAGER"
     onClick={handleCreate}
@@ -24,100 +27,39 @@ Instead of restricting sidebar/page access based on roles, all authenticated use
 >
     Create Program
 </ActionButton>
-```
 
-**ContentGate** - Render entire content sections conditionally
-```jsx
-<ContentGate authority="PROGRAM_MANAGER">
-    <CreateProgramForm />
-</ContentGate>
-```
+// No permission required — visible to all
+<ActionButton onClick={() => viewDetails()}>
+    View Details
+</ActionButton>
 
-## Usage Examples
-
-### Example 1: Programs Page
-
-```jsx
-import ActionButton from "../components/ActionButton";
-import ContentGate from "../components/ContentGate";
-
-export default function ProgramsPage() {
-    return (
-        <div>
-            {/* Button visible only to PROGRAM_MANAGER */}
-            <ActionButton
-                authority="PROGRAM_MANAGER"
-                onClick={() => setShowForm(true)}
-                className="btn btn-success"
-            >
-                + Create Program
-            </ActionButton>
-
-            {/* Form section visible only to PROGRAM_MANAGER */}
-            <ContentGate authority="PROGRAM_MANAGER">
-                <CreateProgramForm />
-            </ContentGate>
-
-            {/* Status dropdown visible only to PROGRAM_MANAGER */}
-            <ContentGate authority="PROGRAM_MANAGER">
-                <select onChange={(e) => updateStatus(e.target.value)}>
-                    <option>Active</option>
-                    <option>Inactive</option>
-                </select>
-            </ContentGate>
-
-            {/* View button visible to everyone */}
-            <ActionButton onClick={() => viewDetails()}>
-                View Details
-            </ActionButton>
-        </div>
-    );
-}
-```
-
-### Example 2: Multi-Authority Access
-
-```jsx
-// Only PROGRAM_MANAGER or ADMIN can delete
+// Multiple authorities (OR logic)
 <ActionButton
     authorities={["PROGRAM_MANAGER", "ADMIN"]}
     onClick={handleDelete}
     className="btn btn-danger"
 >
-    Delete Program
+    Delete
 </ActionButton>
-
-// Only officers can submit (COMPLIANCE_OFFICER OR AUDIT_MANAGER)
-<ActionButton
-    roles={["COMPLIANCE_OFFICER", "AUDIT_MANAGER"]}
-    onClick={handleSubmit}
->
-    Submit
-</ActionButton>
-
-// Require ALL authorities (both required)
-<ContentGate
-    authorities={["PROGRAM_MANAGER", "AUDIT_MANAGER"]}
-    requireAll={true}
->
-    <AdminReview />
-</ContentGate>
 ```
 
-### Example 3: With Fallback Content
+### ContentGate — For content sections (forms, panels, cards)
 
 ```jsx
-<ActionButton
-    authority="PROGRAM_MANAGER"
-    onClick={handleCreate}
-    fallback={<p className="text-muted">Only Program Managers can create</p>}
->
-    Create
-</ActionButton>
+// Only PROGRAM_MANAGER sees the create form
+<ContentGate authority="PROGRAM_MANAGER">
+    <CreateProgramForm />
+</ContentGate>
 
+// Only CITIZEN or BUSINESS_OWNER sees this
+<ContentGate roles={["CITIZEN", "BUSINESS_OWNER"]}>
+    <ApplicationForm />
+</ContentGate>
+
+// With fallback message for unauthorized users
 <ContentGate
     authority="ADMIN"
-    fallback={<p>Access Denied</p>}
+    fallback={<p className="text-muted">Admin access required</p>}
 >
     <AdminPanel />
 </ContentGate>
@@ -136,7 +78,6 @@ export default function ProgramsPage() {
 | `className` | string | Button CSS classes |
 | `disabled` | boolean | Disable button |
 | `fallback` | ReactNode | Content to show if no permission |
-| `...props` | any | Standard button props |
 
 ## ContentGate Props
 
@@ -150,37 +91,41 @@ export default function ProgramsPage() {
 | `fallback` | ReactNode | Content to show if no permission |
 | `children` | ReactNode | Content to render if permission granted |
 
+## Permission Map (per Page)
+
+| Page | View | Create | Update/Edit | Delete |
+|------|------|--------|-------------|--------|
+| Programs | Everyone | `PROGRAM_MANAGER` | `PROGRAM_MANAGER` (status) | — |
+| Applications | Everyone | `CITIZEN`/`BUSINESS_OWNER` | `PROGRAM_MANAGER` (approve/reject) | — |
+| Projects | Everyone | `CITIZEN`/`BUSINESS_OWNER` | `PROGRAM_MANAGER` (status) | — |
+| Compliance | Everyone | `COMPLIANCE_OFFICER` | — | — |
+| Audit | Everyone | `AUDIT_MANAGER` | `AUDIT_MANAGER` (close) | — |
+| Incentives | Everyone | `DISBURSEMENT_OFFICER` | — | `DISBURSEMENT_OFFICER` |
+| Resources | Everyone | `PROGRAM_MANAGER` | `PROGRAM_MANAGER` | `PROGRAM_MANAGER` |
+| Officers | Everyone | — | `ADMIN` (approve/reject) | — |
+
 ## Authority/Role Reference
 
-### Authorities (from backend enums)
-- `ADMIN` - System administrator
-- `PROGRAM_MANAGER` - Can create and manage programs
-- `COMPLIANCE_OFFICER` - Can create compliance records
-- `AUDIT_MANAGER` - Can initiate and manage audits
-- `DISBURSEMENT_OFFICER` - Can process incentives
+### Authorities (from backend)
+- `ADMIN` — System administrator
+- `PROGRAM_MANAGER` — Can create and manage programs
+- `COMPLIANCE_OFFICER` — Can create compliance records
+- `AUDIT_MANAGER` — Can initiate and manage audits
+- `DISBURSEMENT_OFFICER` — Can process incentives
 
 ### Roles (from backend PrimaryRole)
-- `CITIZEN` - Regular citizen user
-- `BUSINESS_OWNER` - Business entity
-- `OFFICER` - Government officer
+- `CITIZEN` — Regular citizen user
+- `BUSINESS_OWNER` — Business entity
+- `OFFICER` — Government officer
 
 ## Best Practices
 
-1. **Always show pages** - Don't block page access via components
-2. **Use ActionButton for actions** - Buttons, links for specific operations
-3. **Use ContentGate for sections** - Forms, panels, cards that should be hidden
-4. **Provide feedback** - Use titles and fallback content for disabled features
-5. **Keep it simple** - Use single authority checks when possible
-6. **Reuse components** - These are framework components, use everywhere
-
-## Migration Checklist
-
-- [ ] Remove `RequiredPermission` wrapper from page components
-- [ ] Replace `PermissionGate` with `ContentGate`
-- [ ] Add `ActionButton` for all user-action elements
-- [ ] Test with different user roles
-- [ ] Update all page-level access controls
-- [ ] Add appropriate titles to buttons for UX
+1. **Never block page access** — All pages visible to all authenticated users
+2. **Use ActionButton for actions** — Buttons for create/edit/delete operations
+3. **Use ContentGate for sections** — Forms, panels, cards that should be hidden
+4. **Provide fallback** — Use `fallback` prop to show info messages to unauthorized users
+5. **Keep it simple** — Use single authority checks when possible
+6. **Backend enforces security** — Frontend gating is UX only; backend rejects unauthorized requests
 
 ## Backend Endpoint Security
 
@@ -199,5 +144,4 @@ export default function ProgramsPage() {
 .hasAuthority("PROGRAM_MANAGER")
 ```
 
-The frontend mirrors this - buttons for create/update/delete are hidden, but even if someone tries to bypass them, the backend will reject the request.
-
+The frontend mirrors this — buttons for create/update/delete are hidden, but even if someone tries to bypass them, the backend will reject the request.

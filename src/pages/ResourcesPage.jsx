@@ -1,18 +1,13 @@
 import { useState, useEffect } from "react";
 import {
-    allocateResource,
-    updateResource,
-    getResourceById,
-    deleteResource,
-    updateResourceStatus,
-    createInfrastructure,
-    getAllInfrastructure,
-    getInfrastructureById,
-    deleteInfrastructure,
+    allocateResource, updateResource, getResourceById,
+    deleteResource, updateResourceStatus,
+    createInfrastructure, getAllInfrastructure,
+    getInfrastructureById, deleteInfrastructure,
 } from "../api/resourceApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-import { RequiredPermission } from "../components/PermissionGate";
+import ContentGate from "../components/ContentGate";
 
 export default function ResourcesPage() {
     const [activeTab, setActiveTab] = useState("resources");
@@ -20,8 +15,6 @@ export default function ResourcesPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
-
-    // Resource form
     const [resourceForm, setResourceForm] = useState({ projectId: "", type: "Equipment", quantity: "" });
     const [updateResourceId, setUpdateResourceId] = useState("");
     const [updateResourceForm, setUpdateResourceForm] = useState({ projectId: "", type: "Funds", quantity: "" });
@@ -30,407 +23,205 @@ export default function ResourcesPage() {
     const [deleteResourceId, setDeleteResourceId] = useState("");
     const [statusResourceId, setStatusResourceId] = useState("");
     const [newStatus, setNewStatus] = useState("Allocated");
-
-    // Infrastructure form
     const [infraForm, setInfraForm] = useState({ projectId: "", type: "Solar Plant", location: "", capacity: "" });
     const [viewInfraId, setViewInfraId] = useState("");
     const [viewedInfra, setViewedInfra] = useState(null);
     const [deleteInfraId, setDeleteInfraId] = useState("");
-
     const clearMessages = () => { setError(""); setSuccess(""); };
 
-    useEffect(() => {
-        if (activeTab === "infrastructure") loadAllInfra();
-    }, [activeTab]);
+    useEffect(() => { if (activeTab === "infrastructure") loadAllInfra(); }, [activeTab]);
 
     const loadAllInfra = async () => {
-        try {
-            setLoading(true);
-            const data = await getAllInfrastructure();
-            setInfrastructure(Array.isArray(data) ? data : []);
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to load infrastructure");
-        } finally { setLoading(false); }
+        try { setLoading(true); const data = await getAllInfrastructure(); setInfrastructure(Array.isArray(data) ? data : []); }
+        catch (err) { setError(err.response?.data?.message || "Failed to load infrastructure"); }
+        finally { setLoading(false); }
     };
-
-    // ── Resource Handlers ──────────────────────────────────
     const handleAllocate = async (e) => {
         e.preventDefault(); clearMessages();
-        try {
-            setLoading(true);
-            await allocateResource({ ...resourceForm, quantity: Number(resourceForm.quantity), projectId: Number(resourceForm.projectId) });
-            setSuccess("Resource allocated successfully!");
-            setResourceForm({ projectId: "", type: "Equipment", quantity: "" });
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to allocate resource");
-        } finally { setLoading(false); }
+        try { setLoading(true); await allocateResource({ ...resourceForm, quantity: Number(resourceForm.quantity), projectId: Number(resourceForm.projectId) }); setSuccess("Resource allocated!"); setResourceForm({ projectId: "", type: "Equipment", quantity: "" }); }
+        catch (err) { setError(err.response?.data?.message || "Failed to allocate resource"); } finally { setLoading(false); }
     };
-
     const handleUpdateResource = async (e) => {
-        e.preventDefault(); clearMessages();
-        if (!updateResourceId) { setError("Enter resource ID"); return; }
-        try {
-            setLoading(true);
-            await updateResource(updateResourceId, { ...updateResourceForm, quantity: Number(updateResourceForm.quantity), projectId: Number(updateResourceForm.projectId) });
-            setSuccess("Resource updated successfully!");
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to update resource");
-        } finally { setLoading(false); }
+        e.preventDefault(); clearMessages(); if (!updateResourceId) { setError("Enter resource ID"); return; }
+        try { setLoading(true); await updateResource(updateResourceId, { ...updateResourceForm, quantity: Number(updateResourceForm.quantity), projectId: Number(updateResourceForm.projectId) }); setSuccess("Resource updated!"); }
+        catch (err) { setError(err.response?.data?.message || "Failed to update resource"); } finally { setLoading(false); }
     };
-
     const handleGetResource = async () => {
-        if (!viewResourceId) { setError("Enter resource ID"); return; }
-        clearMessages();
-        try {
-            setLoading(true);
-            const data = await getResourceById(viewResourceId);
-            setViewedResource(data);
-        } catch (err) {
-            setError(err.response?.data?.message || "Resource not found");
-        } finally { setLoading(false); }
+        if (!viewResourceId) { setError("Enter resource ID"); return; } clearMessages();
+        try { setLoading(true); setViewedResource(await getResourceById(viewResourceId)); }
+        catch (err) { setError(err.response?.data?.message || "Resource not found"); } finally { setLoading(false); }
     };
-
     const handleDeleteResource = async () => {
-        if (!deleteResourceId) { setError("Enter resource ID"); return; }
-        if (!window.confirm(`Delete resource #${deleteResourceId}?`)) return;
-        clearMessages();
-        try {
-            setLoading(true);
-            await deleteResource(deleteResourceId);
-            setSuccess("Resource deleted!");
-            setDeleteResourceId("");
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to delete resource");
-        } finally { setLoading(false); }
+        if (!deleteResourceId) { setError("Enter resource ID"); return; } if (!window.confirm(`Delete resource #${deleteResourceId}?`)) return; clearMessages();
+        try { setLoading(true); await deleteResource(deleteResourceId); setSuccess("Resource deleted!"); setDeleteResourceId(""); }
+        catch (err) { setError(err.response?.data?.message || "Failed to delete"); } finally { setLoading(false); }
     };
-
     const handleUpdateStatus = async () => {
-        if (!statusResourceId) { setError("Enter resource ID"); return; }
-        clearMessages();
-        try {
-            setLoading(true);
-            await updateResourceStatus(statusResourceId, newStatus);
-            setSuccess(`Resource #${statusResourceId} status updated to ${newStatus}`);
-            setStatusResourceId("");
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to update status");
-        } finally { setLoading(false); }
+        if (!statusResourceId) { setError("Enter resource ID"); return; } clearMessages();
+        try { setLoading(true); await updateResourceStatus(statusResourceId, newStatus); setSuccess(`Status updated to ${newStatus}`); setStatusResourceId(""); }
+        catch (err) { setError(err.response?.data?.message || "Failed to update status"); } finally { setLoading(false); }
     };
-
-    // ── Infrastructure Handlers ────────────────────────────
     const handleCreateInfra = async (e) => {
         e.preventDefault(); clearMessages();
-        try {
-            setLoading(true);
-            await createInfrastructure({ ...infraForm, projectId: Number(infraForm.projectId), capacity: Number(infraForm.capacity) });
-            setSuccess("Infrastructure created successfully!");
-            setInfraForm({ projectId: "", type: "Solar Plant", location: "", capacity: "" });
-            loadAllInfra();
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to create infrastructure");
-        } finally { setLoading(false); }
+        try { setLoading(true); await createInfrastructure({ ...infraForm, projectId: Number(infraForm.projectId), capacity: Number(infraForm.capacity) }); setSuccess("Infrastructure created!"); setInfraForm({ projectId: "", type: "Solar Plant", location: "", capacity: "" }); loadAllInfra(); }
+        catch (err) { setError(err.response?.data?.message || "Failed to create infrastructure"); } finally { setLoading(false); }
     };
-
     const handleGetInfra = async () => {
-        if (!viewInfraId) { setError("Enter infrastructure ID"); return; }
-        clearMessages();
-        try {
-            setLoading(true);
-            const data = await getInfrastructureById(viewInfraId);
-            setViewedInfra(data);
-        } catch (err) {
-            setError(err.response?.data?.message || "Infrastructure not found");
-        } finally { setLoading(false); }
+        if (!viewInfraId) { setError("Enter infrastructure ID"); return; } clearMessages();
+        try { setLoading(true); setViewedInfra(await getInfrastructureById(viewInfraId)); }
+        catch (err) { setError(err.response?.data?.message || "Infrastructure not found"); } finally { setLoading(false); }
     };
-
     const handleDeleteInfra = async () => {
-        if (!deleteInfraId) { setError("Enter infrastructure ID"); return; }
-        if (!window.confirm(`Delete infrastructure #${deleteInfraId}?`)) return;
-        clearMessages();
-        try {
-            setLoading(true);
-            await deleteInfrastructure(deleteInfraId);
-            setSuccess("Infrastructure deleted!");
-            setDeleteInfraId("");
-            loadAllInfra();
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to delete infrastructure");
-        } finally { setLoading(false); }
+        if (!deleteInfraId) { setError("Enter infrastructure ID"); return; } if (!window.confirm(`Delete infrastructure #${deleteInfraId}?`)) return; clearMessages();
+        try { setLoading(true); await deleteInfrastructure(deleteInfraId); setSuccess("Infrastructure deleted!"); setDeleteInfraId(""); loadAllInfra(); }
+        catch (err) { setError(err.response?.data?.message || "Failed to delete infrastructure"); } finally { setLoading(false); }
     };
 
     return (
-        <RequiredPermission
-            authority="PROGRAM_MANAGER"
-            message="Only Program Managers can access Resource & Infrastructure management."
-        >
-            <div>
-                <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                    <div>
-                        <h4 className="fw-bold text-success mb-0">Resource & Infrastructure</h4>
-                        <p className="text-muted small mb-0">Allocate resources and manage infrastructure assets</p>
-                    </div>
+        <div>
+            <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                <div>
+                    <h4 className="fw-bold text-success mb-0">Resource & Infrastructure</h4>
+                    <p className="text-muted small mb-0">Allocate resources and manage infrastructure assets</p>
                 </div>
+            </div>
+            {error && <Alert message={error} type="danger" />}
+            {success && <Alert message={success} type="success" />}
+            <ul className="nav nav-tabs mb-4">
+                <li className="nav-item">
+                    <button className={`nav-link ${activeTab === "resources" ? "active fw-semibold" : "text-muted"}`}
+                        onClick={() => { setActiveTab("resources"); clearMessages(); }}
+                        style={activeTab === "resources" ? { color: '#198754', borderBottomColor: '#198754' } : {}}>Resources</button>
+                </li>
+                <li className="nav-item">
+                    <button className={`nav-link ${activeTab === "infrastructure" ? "active fw-semibold" : "text-muted"}`}
+                        onClick={() => { setActiveTab("infrastructure"); clearMessages(); }}
+                        style={activeTab === "infrastructure" ? { color: '#198754', borderBottomColor: '#198754' } : {}}>Infrastructure</button>
+                </li>
+            </ul>
+            {loading && <Loading />}
 
-                {error && <Alert message={error} type="danger" />}
-                {success && <Alert message={success} type="success" />}
-
-                {/* Tabs */}
-                <ul className="nav nav-tabs mb-4">
-                    <li className="nav-item">
-                        <button
-                            className={`nav-link ${activeTab === "resources" ? "active fw-semibold" : "text-muted"}`}
-                            onClick={() => { setActiveTab("resources"); clearMessages(); }}
-                            style={activeTab === "resources" ? { color: '#198754', borderBottomColor: '#198754' } : {}}
-                        >
-                            Resources
-                        </button>
-                    </li>
-                    <li className="nav-item">
-                        <button
-                            className={`nav-link ${activeTab === "infrastructure" ? "active fw-semibold" : "text-muted"}`}
-                            onClick={() => { setActiveTab("infrastructure"); clearMessages(); }}
-                            style={activeTab === "infrastructure" ? { color: '#198754', borderBottomColor: '#198754' } : {}}
-                        >
-                            Infrastructure
-                        </button>
-                    </li>
-                </ul>
-
-                {loading && <Loading />}
-
-                {/* ── RESOURCES TAB ── */}
-                {!loading && activeTab === "resources" && (
-                    <div className="row g-4">
-                        {/* Allocate Resource */}
+            {/* RESOURCES TAB */}
+            {!loading && activeTab === "resources" && (
+                <div className="row g-4">
+                    {/* View Resource — visible to all */}
+                    <div className="col-md-6">
+                        <div className="card border-0 shadow-sm h-100">
+                            <div className="card-header bg-success text-white"><h6 className="mb-0">Get Resource by ID</h6></div>
+                            <div className="card-body">
+                                <div className="d-flex gap-2 mb-3">
+                                    <input type="number" className="form-control" placeholder="Resource ID" value={viewResourceId} onChange={e => setViewResourceId(e.target.value)} />
+                                    <button className="btn btn-success" onClick={handleGetResource}>Fetch</button>
+                                </div>
+                                {viewedResource && (<div className="bg-light p-3 rounded">{Object.entries(viewedResource).map(([k, v]) => (<div key={k} className="mb-1"><span className="text-muted">{k}: </span><strong>{String(v)}</strong></div>))}</div>)}
+                            </div>
+                        </div>
+                    </div>
+                    {/* Allocate — PROGRAM_MANAGER only */}
+                    <ContentGate authority="PROGRAM_MANAGER">
                         <div className="col-md-6">
                             <div className="card border-0 shadow-sm h-100">
                                 <div className="card-header bg-success text-white"><h6 className="mb-0">Allocate Resource</h6></div>
                                 <div className="card-body">
                                     <form onSubmit={handleAllocate}>
-                                        <div className="mb-3">
-                                            <label className="form-label">Project ID</label>
-                                            <input type="number" className="form-control" value={resourceForm.projectId}
-                                                onChange={e => setResourceForm({ ...resourceForm, projectId: e.target.value })} required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Type</label>
-                                            <select className="form-select" value={resourceForm.type}
-                                                onChange={e => setResourceForm({ ...resourceForm, type: e.target.value })}>
-                                                <option>Equipment</option>
-                                                <option>Funds</option>
-                                                <option>Personnel</option>
-                                                <option>Land</option>
-                                            </select>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Quantity</label>
-                                            <input type="number" className="form-control" value={resourceForm.quantity}
-                                                onChange={e => setResourceForm({ ...resourceForm, quantity: e.target.value })} required />
-                                        </div>
+                                        <div className="mb-3"><label className="form-label">Project ID</label><input type="number" className="form-control" value={resourceForm.projectId} onChange={e => setResourceForm({ ...resourceForm, projectId: e.target.value })} required /></div>
+                                        <div className="mb-3"><label className="form-label">Type</label><select className="form-select" value={resourceForm.type} onChange={e => setResourceForm({ ...resourceForm, type: e.target.value })}><option>Equipment</option><option>Funds</option><option>Personnel</option><option>Land</option></select></div>
+                                        <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" value={resourceForm.quantity} onChange={e => setResourceForm({ ...resourceForm, quantity: e.target.value })} required /></div>
                                         <button type="submit" className="btn btn-success w-100">Allocate</button>
                                     </form>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Update Resource */}
+                    </ContentGate>
+                    {/* Update — PROGRAM_MANAGER only */}
+                    <ContentGate authority="PROGRAM_MANAGER">
                         <div className="col-md-6">
                             <div className="card border-0 shadow-sm h-100">
                                 <div className="card-header bg-success text-white"><h6 className="mb-0">Update Resource</h6></div>
                                 <div className="card-body">
                                     <form onSubmit={handleUpdateResource}>
-                                        <div className="mb-3">
-                                            <label className="form-label">Resource ID</label>
-                                            <input type="number" className="form-control" value={updateResourceId}
-                                                onChange={e => setUpdateResourceId(e.target.value)} required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Project ID</label>
-                                            <input type="number" className="form-control" value={updateResourceForm.projectId}
-                                                onChange={e => setUpdateResourceForm({ ...updateResourceForm, projectId: e.target.value })} />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Type</label>
-                                            <select className="form-select" value={updateResourceForm.type}
-                                                onChange={e => setUpdateResourceForm({ ...updateResourceForm, type: e.target.value })}>
-                                                <option>Equipment</option>
-                                                <option>Funds</option>
-                                                <option>Personnel</option>
-                                                <option>Land</option>
-                                            </select>
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Quantity</label>
-                                            <input type="number" className="form-control" value={updateResourceForm.quantity}
-                                                onChange={e => setUpdateResourceForm({ ...updateResourceForm, quantity: e.target.value })} />
-                                        </div>
+                                        <div className="mb-3"><label className="form-label">Resource ID</label><input type="number" className="form-control" value={updateResourceId} onChange={e => setUpdateResourceId(e.target.value)} required /></div>
+                                        <div className="mb-3"><label className="form-label">Project ID</label><input type="number" className="form-control" value={updateResourceForm.projectId} onChange={e => setUpdateResourceForm({ ...updateResourceForm, projectId: e.target.value })} /></div>
+                                        <div className="mb-3"><label className="form-label">Type</label><select className="form-select" value={updateResourceForm.type} onChange={e => setUpdateResourceForm({ ...updateResourceForm, type: e.target.value })}><option>Equipment</option><option>Funds</option><option>Personnel</option><option>Land</option></select></div>
+                                        <div className="mb-3"><label className="form-label">Quantity</label><input type="number" className="form-control" value={updateResourceForm.quantity} onChange={e => setUpdateResourceForm({ ...updateResourceForm, quantity: e.target.value })} /></div>
                                         <button type="submit" className="btn btn-success w-100">Update</button>
                                     </form>
                                 </div>
                             </div>
                         </div>
-
-                        {/* Get Resource by ID */}
-                        <div className="col-md-6">
-                            <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-success text-white"><h6 className="mb-0">Get Resource by ID</h6></div>
-                                <div className="card-body">
-                                    <div className="d-flex gap-2 mb-3">
-                                        <input type="number" className="form-control" placeholder="Resource ID"
-                                            value={viewResourceId} onChange={e => setViewResourceId(e.target.value)} />
-                                        <button className="btn btn-success" onClick={handleGetResource}>Fetch</button>
-                                    </div>
-                                    {viewedResource && (
-                                        <div className="bg-light p-3 rounded">
-                                            {Object.entries(viewedResource).map(([k, v]) => (
-                                                <div key={k} className="mb-1">
-                                                    <span className="text-muted">{k}: </span><strong>{String(v)}</strong>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Delete Resource & Update Status */}
+                    </ContentGate>
+                    {/* Delete & Status — PROGRAM_MANAGER only */}
+                    <ContentGate authority="PROGRAM_MANAGER">
                         <div className="col-md-6">
                             <div className="card border-0 shadow-sm h-100">
                                 <div className="card-header bg-danger text-white"><h6 className="mb-0">Delete & Update Status</h6></div>
                                 <div className="card-body">
                                     <p className="fw-semibold small text-muted">Delete Resource</p>
-                                    <div className="d-flex gap-2 mb-4">
-                                        <input type="number" className="form-control" placeholder="Resource ID"
-                                            value={deleteResourceId} onChange={e => setDeleteResourceId(e.target.value)} />
-                                        <button className="btn btn-danger" onClick={handleDeleteResource}>Delete</button>
-                                    </div>
+                                    <div className="d-flex gap-2 mb-4"><input type="number" className="form-control" placeholder="Resource ID" value={deleteResourceId} onChange={e => setDeleteResourceId(e.target.value)} /><button className="btn btn-danger" onClick={handleDeleteResource}>Delete</button></div>
                                     <hr />
                                     <p className="fw-semibold small text-muted">Update Resource Status</p>
-                                    <div className="mb-2">
-                                        <input type="number" className="form-control mb-2" placeholder="Resource ID"
-                                            value={statusResourceId} onChange={e => setStatusResourceId(e.target.value)} />
-                                        <select className="form-select mb-2" value={newStatus} onChange={e => setNewStatus(e.target.value)}>
-                                            <option>Allocated</option>
-                                            <option>Available</option>
-                                            <option>Maintenance</option>
-                                            <option>Decommissioned</option>
-                                        </select>
-                                        <button className="btn btn-success w-100" onClick={handleUpdateStatus}>Update Status</button>
-                                    </div>
+                                    <input type="number" className="form-control mb-2" placeholder="Resource ID" value={statusResourceId} onChange={e => setStatusResourceId(e.target.value)} />
+                                    <select className="form-select mb-2" value={newStatus} onChange={e => setNewStatus(e.target.value)}><option>Allocated</option><option>Available</option><option>Maintenance</option><option>Decommissioned</option></select>
+                                    <button className="btn btn-success w-100" onClick={handleUpdateStatus}>Update Status</button>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    </ContentGate>
+                </div>
+            )}
 
-                {/* ── INFRASTRUCTURE TAB ── */}
-                {!loading && activeTab === "infrastructure" && (
-                    <div className="row g-4">
-                        {/* Create Infrastructure */}
+            {/* INFRASTRUCTURE TAB */}
+            {!loading && activeTab === "infrastructure" && (
+                <div className="row g-4">
+                    <ContentGate authority="PROGRAM_MANAGER">
                         <div className="col-md-5">
                             <div className="card border-0 shadow-sm">
                                 <div className="card-header bg-success text-white"><h6 className="mb-0">Create Infrastructure</h6></div>
                                 <div className="card-body">
                                     <form onSubmit={handleCreateInfra}>
-                                        <div className="mb-3">
-                                            <label className="form-label">Project ID</label>
-                                            <input type="number" className="form-control" value={infraForm.projectId}
-                                                onChange={e => setInfraForm({ ...infraForm, projectId: e.target.value })} required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Type</label>
-                                            <input type="text" className="form-control" value={infraForm.type}
-                                                onChange={e => setInfraForm({ ...infraForm, type: e.target.value })}
-                                                placeholder="Solar Plant" required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Location</label>
-                                            <input type="text" className="form-control" value={infraForm.location}
-                                                onChange={e => setInfraForm({ ...infraForm, location: e.target.value })}
-                                                placeholder="Sector 5, Bengaluru" required />
-                                        </div>
-                                        <div className="mb-3">
-                                            <label className="form-label">Capacity (kW)</label>
-                                            <input type="number" className="form-control" value={infraForm.capacity}
-                                                onChange={e => setInfraForm({ ...infraForm, capacity: e.target.value })} required />
-                                        </div>
+                                        <div className="mb-3"><label className="form-label">Project ID</label><input type="number" className="form-control" value={infraForm.projectId} onChange={e => setInfraForm({ ...infraForm, projectId: e.target.value })} required /></div>
+                                        <div className="mb-3"><label className="form-label">Type</label><input type="text" className="form-control" value={infraForm.type} onChange={e => setInfraForm({ ...infraForm, type: e.target.value })} placeholder="Solar Plant" required /></div>
+                                        <div className="mb-3"><label className="form-label">Location</label><input type="text" className="form-control" value={infraForm.location} onChange={e => setInfraForm({ ...infraForm, location: e.target.value })} placeholder="Sector 5, Bengaluru" required /></div>
+                                        <div className="mb-3"><label className="form-label">Capacity (kW)</label><input type="number" className="form-control" value={infraForm.capacity} onChange={e => setInfraForm({ ...infraForm, capacity: e.target.value })} required /></div>
                                         <button type="submit" className="btn btn-success w-100">Create Infrastructure</button>
                                     </form>
                                 </div>
                             </div>
-
-                            {/* Get by ID & Delete */}
-                            <div className="card border-0 shadow-sm mt-4">
-                                <div className="card-header bg-success text-white"><h6 className="mb-0">Lookup / Delete</h6></div>
-                                <div className="card-body">
-                                    <p className="small text-muted fw-semibold">Get by ID</p>
-                                    <div className="d-flex gap-2 mb-3">
-                                        <input type="number" className="form-control" placeholder="Infra ID"
-                                            value={viewInfraId} onChange={e => setViewInfraId(e.target.value)} />
-                                        <button className="btn btn-success" onClick={handleGetInfra}>Fetch</button>
-                                    </div>
-                                    {viewedInfra && (
-                                        <div className="bg-light p-3 rounded mb-3">
-                                            {Object.entries(viewedInfra).map(([k, v]) => (
-                                                <div key={k} className="mb-1">
-                                                    <span className="text-muted">{k}: </span><strong>{String(v)}</strong>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                    <hr />
-                                    <p className="small text-muted fw-semibold">Delete by ID</p>
-                                    <div className="d-flex gap-2">
-                                        <input type="number" className="form-control" placeholder="Infra ID"
-                                            value={deleteInfraId} onChange={e => setDeleteInfraId(e.target.value)} />
-                                        <button className="btn btn-danger" onClick={handleDeleteInfra}>Delete</button>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-
-                        {/* All Infrastructure */}
-                        <div className="col-md-7">
-                            <div className="card border-0 shadow-sm h-100">
-                                <div className="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                                    <h6 className="mb-0">All Infrastructure</h6>
-                                    <button className="btn btn-sm btn-light text-success" onClick={loadAllInfra}>↻ Refresh</button>
-                                </div>
-                                <div className="card-body">
-                                    {infrastructure.length === 0 ? (
-                                        <p className="text-muted text-center py-4">No infrastructure records found</p>
-                                    ) : (
-                                        <div className="table-responsive">
-                                            <table className="table table-striped table-hover">
-                                                <thead className="table-success">
-                                                    <tr>
-                                                        <th>ID</th>
-                                                        <th>Type</th>
-                                                        <th>Location</th>
-                                                        <th>Capacity</th>
-                                                        <th>Project ID</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {infrastructure.map((infra) => (
-                                                        <tr key={infra.id}>
-                                                            <td>{infra.id}</td>
-                                                            <td><span className="badge bg-success">{infra.type}</span></td>
-                                                            <td>{infra.location}</td>
-                                                            <td>{infra.capacity} kW</td>
-                                                            <td>{infra.projectId}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
+                    </ContentGate>
+                    <div className="col-md-5">
+                        <div className="card border-0 shadow-sm">
+                            <div className="card-header bg-success text-white"><h6 className="mb-0">Lookup Infrastructure</h6></div>
+                            <div className="card-body">
+                                <div className="d-flex gap-2 mb-3"><input type="number" className="form-control" placeholder="Infra ID" value={viewInfraId} onChange={e => setViewInfraId(e.target.value)} /><button className="btn btn-success" onClick={handleGetInfra}>Fetch</button></div>
+                                {viewedInfra && (<div className="bg-light p-3 rounded mb-3">{Object.entries(viewedInfra).map(([k, v]) => (<div key={k} className="mb-1"><span className="text-muted">{k}: </span><strong>{String(v)}</strong></div>))}</div>)}
+                                <ContentGate authority="PROGRAM_MANAGER">
+                                    <hr /><p className="small text-muted fw-semibold">Delete by ID</p>
+                                    <div className="d-flex gap-2"><input type="number" className="form-control" placeholder="Infra ID" value={deleteInfraId} onChange={e => setDeleteInfraId(e.target.value)} /><button className="btn btn-danger" onClick={handleDeleteInfra}>Delete</button></div>
+                                </ContentGate>
                             </div>
                         </div>
                     </div>
-                )}
-            </div>
-        </RequiredPermission>
+                    <div className="col-md-7">
+                        <div className="card border-0 shadow-sm h-100">
+                            <div className="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                <h6 className="mb-0">All Infrastructure</h6>
+                                <button className="btn btn-sm btn-light text-success" onClick={loadAllInfra}>↻ Refresh</button>
+                            </div>
+                            <div className="card-body">
+                                {infrastructure.length === 0 ? (<p className="text-muted text-center py-4">No infrastructure records found</p>) : (
+                                    <div className="table-responsive">
+                                        <table className="table table-striped table-hover">
+                                            <thead className="table-success"><tr><th>ID</th><th>Type</th><th>Location</th><th>Capacity</th><th>Project ID</th></tr></thead>
+                                            <tbody>{infrastructure.map((infra) => (<tr key={infra.id}><td>{infra.id}</td><td><span className="badge bg-success">{infra.type}</span></td><td>{infra.location}</td><td>{infra.capacity} kW</td><td>{infra.projectId}</td></tr>))}</tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 }

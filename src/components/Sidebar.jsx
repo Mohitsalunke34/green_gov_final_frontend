@@ -1,68 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "../auth/AuthContext";
 
-const NAV_ITEMS = {
-    PROGRAM_MANAGER: [
-        { path: "/dashboard",   label: "Dashboard" },
-        { path: "/programs",    label: "Programs" },
-        { path: "/projects",    label: "Projects" },
-        { path: "/applications",label: "Applications" },
-        { path: "/incentives",  label: "Incentives" },
-        { path: "/compliance",  label: "Compliance" },
-        { path: "/audit",       label: "Audit" },
-        { path: "/reports",     label: "Reports & Analytics" },
-        { path: "/resources",   label: "Resource & Infrastructure" },
-        { path: "/profile",     label: "My Profile" },
-    ],
-    COMPLIANCE_OFFICER: [
-        { path: "/dashboard",   label: "Dashboard" },
-        { path: "/compliance",  label: "Compliance" },
-        { path: "/reports",     label: "Reports & Analytics" },
-        { path: "/profile",     label: "My Profile" },
-    ],
-    AUDIT_MANAGER: [
-        { path: "/dashboard",   label: "Dashboard" },
-        { path: "/audit",       label: "Audit" },
-        { path: "/compliance",  label: "Compliance" },
-        { path: "/reports",     label: "Reports & Analytics" },
-        { path: "/profile",     label: "My Profile" },
-    ],
-    DISBURSEMENT_OFFICER: [
-        { path: "/dashboard",   label: "Dashboard" },
-        { path: "/incentives",  label: "Incentives & Disbursements" },
-        { path: "/applications",label: "Applications" },
-        { path: "/profile",     label: "My Profile" },
-    ],
-    CITIZEN: [
-        { path: "/dashboard",   label: "Dashboard" },
-        { path: "/programs",    label: "Programs" },
-        { path: "/applications",label: "Applications" },
-        { path: "/projects",    label: "Projects" },
-        { path: "/reports",     label: "Reports & Analytics" },
-        { path: "/profile",     label: "My Profile" },
-    ],
-};
+/**
+ * Sidebar Navigation
+ * All authenticated users see ALL navigation items.
+ * Permission checks happen inside each page component, not here.
+ */
+const NAV_ITEMS = [
+    { path: "/dashboard",    label: "Dashboard" },
+    { path: "/programs",     label: "Programs" },
+    { path: "/projects",     label: "Projects" },
+    { path: "/applications", label: "Applications" },
+    { path: "/incentives",   label: "Incentives & Disbursements" },
+    { path: "/compliance",   label: "Compliance" },
+    { path: "/audit",        label: "Audit" },
+    { path: "/reports",      label: "Reports & Analytics" },
+    { path: "/resources",    label: "Resource & Infrastructure" },
+    { path: "/officers",     label: "Officers Management" },
+    { path: "/profile",      label: "My Profile" },
+];
 
 export default function Sidebar() {
     const location = useLocation();
-    const { getRoles, getAuthorities } = useAuth();
-
-    const userRoles = getRoles();
-    const userAuthorities = getAuthorities();
-
-    const getMenuItems = () => {
-        if (userAuthorities.includes("PROGRAM_MANAGER"))    return NAV_ITEMS.PROGRAM_MANAGER;
-        if (userAuthorities.includes("COMPLIANCE_OFFICER")) return NAV_ITEMS.COMPLIANCE_OFFICER;
-        if (userAuthorities.includes("AUDIT_MANAGER"))      return NAV_ITEMS.AUDIT_MANAGER;
-        if (userAuthorities.includes("DISBURSEMENT_OFFICER")) return NAV_ITEMS.DISBURSEMENT_OFFICER;
-        if (userRoles.includes("CITIZEN") || userRoles.includes("BUSINESS_OWNER")) return NAV_ITEMS.CITIZEN;
-        return [
-            { path: "/dashboard", label: "Dashboard" },
-            { path: "/profile",   label: "My Profile" },
-        ];
-    };
-
-    const menuItems = getMenuItems();
 
     return (
         <div className="bg-white border-end" style={{ width: 230, minHeight: "100%", flexShrink: 0 }}>
@@ -70,7 +28,7 @@ export default function Sidebar() {
                 <p className="mb-0 fw-semibold text-success small text-uppercase ls-wider">Navigation</p>
             </div>
             <nav className="py-2">
-                {menuItems.map((item) => {
+                {NAV_ITEMS.map((item) => {
                     const isActive = location.pathname === item.path;
                     return (
                         <Link

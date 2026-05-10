@@ -7,6 +7,7 @@ import {
 } from "../api/adminApi";
 import Alert from "../components/Alert";
 import Loading from "../components/Loading";
+import ContentGate from "../components/ContentGate";
 
 export default function OfficersManagementPage() {
   const [officers, setOfficers] = useState([]);
@@ -346,60 +347,34 @@ export default function OfficersManagementPage() {
                       </td>
                       <td className="align-middle">
                         {officer.status === "PENDING" && (
-                          <div className="btn-group btn-group-sm" role="group">
-                            <button
-                              className="btn btn-success"
-                              onClick={() => handleApprove(officer.officerProfileId)}
-                              disabled={
-                                actionLoading === officer.officerProfileId
-                              }
-                              title="Approve this officer"
-                            >
-                              {actionLoading === officer.officerProfileId ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm me-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                  Processing...
-                                </>
-                              ) : (
-                                <>
-                                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z" />
-                                  </svg>
-                                  {" "}Approve
-                                </>
-                              )}
-                            </button>
-                            <button
-                              className="btn btn-danger"
-                              onClick={() => handleReject(officer.officerProfileId)}
-                              disabled={
-                                actionLoading === officer.officerProfileId
-                              }
-                              title="Reject this officer"
-                            >
-                              {actionLoading === officer.officerProfileId ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm me-2"
-                                    role="status"
-                                    aria-hidden="true"
-                                  ></span>
-                                  Processing...
-                                </>
-                              ) : (
-                                <>
-                                  <svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708l2.647-2.646-2.647-2.646a.5.5 0 0 1 0-.708z" />
-                                  </svg>
-                                  {" "}Reject
-                                </>
-                              )}
-                            </button>
-                          </div>
+                          <ContentGate authority="ADMIN">
+                            <div className="btn-group btn-group-sm" role="group">
+                              <button
+                                className="btn btn-success"
+                                onClick={() => handleApprove(officer.officerProfileId)}
+                                disabled={actionLoading === officer.officerProfileId}
+                                title="Approve this officer"
+                              >
+                                {actionLoading === officer.officerProfileId ? (
+                                  <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...</>
+                                ) : (
+                                  <><svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 0 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0z" /></svg> Approve</>
+                                )}
+                              </button>
+                              <button
+                                className="btn btn-danger"
+                                onClick={() => handleReject(officer.officerProfileId)}
+                                disabled={actionLoading === officer.officerProfileId}
+                                title="Reject this officer"
+                              >
+                                {actionLoading === officer.officerProfileId ? (
+                                  <><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Processing...</>
+                                ) : (
+                                  <><svg width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708l2.647-2.646-2.647-2.646a.5.5 0 0 1 0-.708z" /></svg> Reject</>
+                                )}
+                              </button>
+                            </div>
+                          </ContentGate>
                         )}
                         {officer.status === "APPROVED" && (
                           <span className="badge bg-success">Approved</span>

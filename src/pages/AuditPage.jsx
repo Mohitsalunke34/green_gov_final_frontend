@@ -5,7 +5,8 @@ import {
 } from "../api/auditApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-import { RequiredPermission } from "../components/PermissionGate";
+import ContentGate from "../components/ContentGate";
+import ActionButton from "../components/ActionButton";
 import { useAuth } from "../auth/AuthContext";
 
 export default function AuditPage() {
@@ -80,23 +81,29 @@ export default function AuditPage() {
     if (loading && audits.length === 0) return <Loading />;
 
     return (
-        <RequiredPermission authority="AUDIT_MANAGER" message="Only Audit Managers can access this page.">
-            <div>
-                {/* Page header */}
-                <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                    <div>
-                        <h4 className="fw-bold text-success mb-0">Audit Management</h4>
-                        <p className="text-muted small mb-0">Create and manage compliance audits</p>
-                    </div>
-                    <button className="btn btn-success btn-sm" onClick={() => setShowCreateForm(!showCreateForm)}>
-                        {showCreateForm ? "Cancel" : "+ Create Audit"}
-                    </button>
+        <div>
+            {/* Page header */}
+            <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                <div>
+                    <h4 className="fw-bold text-success mb-0">Audit Management</h4>
+                    <p className="text-muted small mb-0">Create and manage compliance audits</p>
                 </div>
+                {/* Only AUDIT_MANAGER can create audits */}
+                <ActionButton
+                    authority="AUDIT_MANAGER"
+                    className="btn btn-success btn-sm"
+                    onClick={() => setShowCreateForm(!showCreateForm)}
+                    title="Only Audit Managers can create audits"
+                >
+                    {showCreateForm ? "Cancel" : "+ Create Audit"}
+                </ActionButton>
+            </div>
 
-                {error   && <Alert message={error}   type="danger" />}
-                {success && <Alert message={success} type="success" />}
+            {error   && <Alert message={error}   type="danger" />}
+            {success && <Alert message={success} type="success" />}
 
-                {/* Create Form */}
+            {/* Create Form — only visible to AUDIT_MANAGER */}
+            <ContentGate authority="AUDIT_MANAGER">
                 {showCreateForm && (
                     <div className="card border-0 shadow-sm mb-4">
                         <div className="card-header bg-success text-white border-0">
@@ -125,104 +132,110 @@ export default function AuditPage() {
                         </div>
                     </div>
                 )}
+            </ContentGate>
 
-                {/* Filter */}
-                <div className="card border-0 shadow-sm mb-4">
-                    <div className="card-header bg-white border-bottom">
-                        <h6 className="mb-0 fw-semibold">Filter Audits</h6>
-                    </div>
-                    <div className="card-body p-3">
-                        <div className="row g-3 align-items-end">
+            {/* Filter — visible to all users */}
+            <div className="card border-0 shadow-sm mb-4">
+                <div className="card-header bg-white border-bottom">
+                    <h6 className="mb-0 fw-semibold">Filter Audits</h6>
+                </div>
+                <div className="card-body p-3">
+                    <div className="row g-3 align-items-end">
+                        <div className="col-md-3">
+                            <label className="form-label small fw-semibold">Filter By</label>
+                            <select className="form-select form-select-sm" value={filterType}
+                                onChange={(e) => { setFilterType(e.target.value); setFilterValue(""); }}>
+                                <option value="all">All Audits</option>
+                                <option value="status">Status</option>
+                                <option value="compliance">Compliance Record ID</option>
+                                <option value="officer">Officer ID</option>
+                            </select>
+                        </div>
+                        {filterType === "status" && (
                             <div className="col-md-3">
-                                <label className="form-label small fw-semibold">Filter By</label>
-                                <select className="form-select form-select-sm" value={filterType}
-                                    onChange={(e) => { setFilterType(e.target.value); setFilterValue(""); }}>
-                                    <option value="all">All Audits</option>
-                                    <option value="status">Status</option>
-                                    <option value="compliance">Compliance Record ID</option>
-                                    <option value="officer">Officer ID</option>
+                                <label className="form-label small fw-semibold">Status</label>
+                                <select className="form-select form-select-sm" value={filterValue}
+                                    onChange={(e) => setFilterValue(e.target.value)}>
+                                    <option value="">Select status</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="IN_PROGRESS">In Progress</option>
+                                    <option value="PENDING">Pending</option>
                                 </select>
                             </div>
-                            {filterType === "status" && (
-                                <div className="col-md-3">
-                                    <label className="form-label small fw-semibold">Status</label>
-                                    <select className="form-select form-select-sm" value={filterValue}
-                                        onChange={(e) => setFilterValue(e.target.value)}>
-                                        <option value="">Select status</option>
-                                        <option value="COMPLETED">Completed</option>
-                                        <option value="IN_PROGRESS">In Progress</option>
-                                        <option value="PENDING">Pending</option>
-                                    </select>
-                                </div>
-                            )}
-                            {filterType !== "all" && filterType !== "status" && (
-                                <div className="col-md-3">
-                                    <label className="form-label small fw-semibold">
-                                        {filterType === "compliance" ? "Compliance ID" : "Officer ID"}
-                                    </label>
-                                    <input type="number" className="form-control form-control-sm" value={filterValue}
-                                        onChange={(e) => setFilterValue(e.target.value)} placeholder="Enter ID" />
-                                </div>
-                            )}
-                            <div className="col-md-2">
-                                <button className="btn btn-success btn-sm w-100" onClick={loadAudits} disabled={loading}>
-                                    Search
-                                </button>
+                        )}
+                        {filterType !== "all" && filterType !== "status" && (
+                            <div className="col-md-3">
+                                <label className="form-label small fw-semibold">
+                                    {filterType === "compliance" ? "Compliance ID" : "Officer ID"}
+                                </label>
+                                <input type="number" className="form-control form-control-sm" value={filterValue}
+                                    onChange={(e) => setFilterValue(e.target.value)} placeholder="Enter ID" />
                             </div>
+                        )}
+                        <div className="col-md-2">
+                            <button className="btn btn-success btn-sm w-100" onClick={loadAudits} disabled={loading}>
+                                Search
+                            </button>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                {/* Audits Table */}
-                <div className="card border-0 shadow-sm">
-                    <div className="card-header bg-white border-bottom">
-                        <h6 className="mb-0 fw-semibold">Audit Records</h6>
-                    </div>
-                    <div className="card-body p-0">
-                        {audits.length === 0 ? (
-                            <p className="text-muted text-center py-5 mb-0">
-                                {filterType === "all" ? "Use the filter above to search for audit records" : "No audits found"}
-                            </p>
-                        ) : (
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead className="table-light">
-                                        <tr>
-                                            <th className="ps-4 small">Audit ID</th>
-                                            <th className="small">Compliance ID</th>
-                                            <th className="small">Auditor ID</th>
-                                            <th className="small">Status</th>
-                                            <th className="small">Created</th>
-                                            <th className="small text-end pe-4">Action</th>
+            {/* Audits Table — visible to all users */}
+            <div className="card border-0 shadow-sm">
+                <div className="card-header bg-white border-bottom">
+                    <h6 className="mb-0 fw-semibold">Audit Records</h6>
+                </div>
+                <div className="card-body p-0">
+                    {audits.length === 0 ? (
+                        <p className="text-muted text-center py-5 mb-0">
+                            {filterType === "all" ? "Use the filter above to search for audit records" : "No audits found"}
+                        </p>
+                    ) : (
+                        <div className="table-responsive">
+                            <table className="table table-hover align-middle mb-0">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th className="ps-4 small">Audit ID</th>
+                                        <th className="small">Compliance ID</th>
+                                        <th className="small">Auditor ID</th>
+                                        <th className="small">Status</th>
+                                        <th className="small">Created</th>
+                                        <th className="small text-end pe-4">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {audits.map((a) => (
+                                        <tr key={a.id}>
+                                            <td className="ps-4 small fw-semibold">{a.id}</td>
+                                            <td className="small">{a.complianceId}</td>
+                                            <td className="small">{a.auditorId || "—"}</td>
+                                            <td><span className={`badge ${statusBadge(a.status)}`}>{a.status || "PENDING"}</span></td>
+                                            <td className="small text-muted">
+                                                {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : "—"}
+                                            </td>
+                                            <td className="text-end pe-4">
+                                                {/* Only AUDIT_MANAGER can close audits */}
+                                                {a.status !== "COMPLETED" && (
+                                                    <ActionButton
+                                                        authority="AUDIT_MANAGER"
+                                                        className="btn btn-success btn-sm"
+                                                        onClick={() => handleClose(a.id)}
+                                                        disabled={loading}
+                                                        title="Only Audit Managers can close audits"
+                                                    >
+                                                        Close
+                                                    </ActionButton>
+                                                )}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        {audits.map((a) => (
-                                            <tr key={a.id}>
-                                                <td className="ps-4 small fw-semibold">{a.id}</td>
-                                                <td className="small">{a.complianceId}</td>
-                                                <td className="small">{a.auditorId || "—"}</td>
-                                                <td><span className={`badge ${statusBadge(a.status)}`}>{a.status || "PENDING"}</span></td>
-                                                <td className="small text-muted">
-                                                    {a.createdAt ? new Date(a.createdAt).toLocaleDateString() : "—"}
-                                                </td>
-                                                <td className="text-end pe-4">
-                                                    {a.status !== "COMPLETED" && (
-                                                        <button className="btn btn-success btn-sm"
-                                                            onClick={() => handleClose(a.id)} disabled={loading}>
-                                                            Close
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
                 </div>
             </div>
-        </RequiredPermission>
+        </div>
     );
 }
