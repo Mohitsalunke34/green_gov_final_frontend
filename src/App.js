@@ -15,6 +15,7 @@ import ReportsPage from "./pages/ReportsPage";
 import ResourcesPage from "./pages/ResourcesPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PrivateRoute from "./auth/PrivateRoute";
+import SetupProfilePage from "./pages/SetupProfilePage";
 
 function App() {
   return (
@@ -33,6 +34,16 @@ function App() {
           <PrivateRoute>
             <MainLayout>
               <DashboardPage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/setup-profile"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <SetupProfilePage />
             </MainLayout>
           </PrivateRoute>
         }
