@@ -16,6 +16,7 @@ import ResourcesPage from "./pages/ResourcesPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import PrivateRoute from "./auth/PrivateRoute";
 import SetupProfilePage from "./pages/SetupProfilePage";
+import OfficersManagementPage from "./pages/OfficersManagementPage";
 
 function App() {
   return (
@@ -143,6 +144,17 @@ function App() {
           <PrivateRoute>
             <MainLayout>
               <ProfilePage />
+            </MainLayout>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/officers"
+        element={
+          <PrivateRoute>
+            <MainLayout>
+              <OfficersManagementPage />
             </MainLayout>
           </PrivateRoute>
         }

@@ -4,6 +4,12 @@ import { usePermission } from "../hooks/usePermission";
 
 const ALL_SERVICE_CARDS = [
     {
+        title: "Officers Management",
+        desc: "Verify and manage officer accounts. Approve or reject pending officer registrations.",
+        path: "/officers",
+        requiredAuthority: "ADMIN",
+    },
+    {
         title: "Programs",
         desc: "Create and manage environmental programs. Track budget, status, and assigned managers.",
         path: "/programs",
@@ -70,11 +76,16 @@ export default function DashboardPage() {
     };
 
     const visibleCards = ALL_SERVICE_CARDS.filter(canSeeCard);
-    const roleLabel    = isProgramManager ? "Program Manager" :
-                         authorities.includes("COMPLIANCE_OFFICER") ? "Compliance Officer" :
-                         authorities.includes("AUDIT_MANAGER")      ? "Audit Manager" :
-                         authorities.includes("DISBURSEMENT_OFFICER") ? "Disbursement Officer" :
-                         roles.includes("CITIZEN") ? "Citizen" : "User";
+    const getRoleLabel = () => {
+        if (authorities.includes("ADMIN")) return "Administrator";
+        if (isProgramManager) return "Program Manager";
+        if (authorities.includes("COMPLIANCE_OFFICER")) return "Compliance Officer";
+        if (authorities.includes("AUDIT_MANAGER")) return "Audit Manager";
+        if (authorities.includes("DISBURSEMENT_OFFICER")) return "Disbursement Officer";
+        if (roles.includes("CITIZEN")) return "Citizen";
+        return "User";
+    };
+    const roleLabel = getRoleLabel();
 
     return (
         <div>

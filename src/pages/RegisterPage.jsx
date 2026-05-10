@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import Alert from "../components/Alert";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { registerUser } from "../api/authApi";
+import { registerUser, registerOfficer } from "../api/authApi";
 
 export default function RegisterPage() {
     const [activeTab, setActiveTab] = useState("citizen");
@@ -17,8 +17,14 @@ export default function RegisterPage() {
     });
 
     const [officerForm, setOfficerForm] = useState({
-        username: "", email: "", password: "", confirmPassword: "",
-        officerType: "PROGRAM_MANAGER", department: "", designation: "", officeCode: ""
+        username: "",
+        email: "",
+        password: "",
+        confirmPassword: "",
+        primaryRole: "OFFICER",
+        officerType: "PROGRAM_MANAGER",
+        department: "",
+        designation: ""
     });
 
     const handleCitizenChange = (e) => setCitizenForm({ ...citizenForm, [e.target.name]: e.target.value });
@@ -74,20 +80,28 @@ export default function RegisterPage() {
             return;
         }
 
-        if (!officerForm.department || !officerForm.designation || !officerForm.officeCode) {
-            setError("All officer details are required.");
+        if (!officerForm.department || !officerForm.designation) {
+            setError("Officer type, department, and designation are required.");
             return;
         }
 
         try {
             setLoading(true);
             
-            console.log("Officer registration payload:", officerForm);
+            await registerOfficer({
+                username: officerForm.username,
+                email: officerForm.email,
+                password: officerForm.password,
+                primaryRole: "OFFICER",
+                officerType: officerForm.officerType,
+                department: officerForm.department,
+                designation: officerForm.designation
+            });
             
-            setSuccess("Officer account created successfully! Redirecting to login...");
+            setSuccess("Officer registration successful! Awaiting admin approval. Redirecting to login...");
             setTimeout(() => navigate("/login"), 2000);
         } catch (err) {
-            setError(err.response?.data?.message || "Officer registration failed.");
+            setError(err.response?.data?.message || "Officer registration failed. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -183,11 +197,6 @@ export default function RegisterPage() {
                                                 <option value="COMPLIANCE_OFFICER">Compliance Officer</option>
                                                 <option value="FIELD_INSPECTOR">Field Inspector</option>
                                             </select>
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label htmlFor="officeCode" className={labelClass}>Office Code</label>
-                                            <input id="officeCode" type="text" className={inputClass} name="officeCode"
-                                                value={officerForm.officeCode} onChange={handleOfficerChange} required />
                                         </div>
                                         <div className="col-md-6">
                                             <label htmlFor="department" className={labelClass}>Department</label>
