@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { fetchAllPrograms, createProgram, updateProgramStatus } from "../api/programApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
-import { RequiredPermission, PermissionGate } from "../components/PermissionGate";
+import ActionButton from "../components/ActionButton";
+import ContentGate from "../components/ContentGate";
 
 export default function ProgramsPage() {
     const [programs, setPrograms]           = useState([]);
@@ -62,23 +63,28 @@ export default function ProgramsPage() {
     if (loading && programs.length === 0) return <Loading />;
 
     return (
-        <RequiredPermission authority="PROGRAM_MANAGER" message="Only Program Managers can access this page.">
-            <div>
-                {/* Page header */}
-                <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
-                    <div>
-                        <h4 className="fw-bold text-success mb-0">Programs</h4>
-                        <p className="text-muted small mb-0">Create and manage green initiative programs</p>
-                    </div>
-                    <button className="btn btn-success btn-sm" onClick={() => setShowCreateForm(!showCreateForm)}>
-                        {showCreateForm ? "Cancel" : "+ New Program"}
-                    </button>
+        <div>
+            {/* Page header */}
+            <div className="d-flex align-items-center justify-content-between mb-4 pb-3 border-bottom">
+                <div>
+                    <h4 className="fw-bold text-success mb-0">Programs</h4>
+                    <p className="text-muted small mb-0">Create and manage green initiative programs</p>
                 </div>
+                <ActionButton
+                    authority="PROGRAM_MANAGER"
+                    className="btn btn-success btn-sm"
+                    onClick={() => setShowCreateForm(!showCreateForm)}
+                    title="Only Program Managers can create programs"
+                >
+                    {showCreateForm ? "Cancel" : "+ New Program"}
+                </ActionButton>
+            </div>
 
-                {error   && <Alert message={error}   type="danger" />}
-                {success && <Alert message={success} type="success" />}
+            {error   && <Alert message={error}   type="danger" />}
+            {success && <Alert message={success} type="success" />}
 
-                {/* Create Form */}
+            {/* Create Form - Only visible to PROGRAM_MANAGER */}
+            <ContentGate authority="PROGRAM_MANAGER">
                 {showCreateForm && (
                     <div className="card border-0 shadow-sm mb-4">
                         <div className="card-header bg-success text-white border-0">
@@ -129,8 +135,9 @@ export default function ProgramsPage() {
                         </div>
                     </div>
                 )}
+            </ContentGate>
 
-                {/* Programs Table */}
+            {/* Programs Table */}
                 <div className="card border-0 shadow-sm">
                     <div className="card-header bg-white border-bottom d-flex align-items-center justify-content-between">
                         <h6 className="mb-0 fw-semibold">All Programs</h6>
@@ -163,14 +170,14 @@ export default function ProgramsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="text-end pe-4">
-                                                    <PermissionGate authority="PROGRAM_MANAGER">
+                                                    <ContentGate authority="PROGRAM_MANAGER">
                                                         <select className="form-select form-select-sm" style={{ width: 130 }}
                                                             value={p.status} onChange={(e) => handleStatusChange(p.id, e.target.value)}>
                                                             <option value="ACTIVE">Active</option>
                                                             <option value="PAUSED">Paused</option>
                                                             <option value="CLOSED">Closed</option>
                                                         </select>
-                                                    </PermissionGate>
+                                                    </ContentGate>
                                                 </td>
                                             </tr>
                                         ))}
@@ -181,6 +188,5 @@ export default function ProgramsPage() {
                     </div>
                 </div>
             </div>
-        </RequiredPermission>
     );
 }
