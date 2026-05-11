@@ -31,12 +31,19 @@ export default function LoginPage() {
 
             let currentUserId = data.id || data.userId;
             let decodedUsername = data.username || username;
+            let isOfficer = false; // 🚀 New flag to protect Officers
 
-            if (!currentUserId && typeof token === "string") {
+            if (typeof token === "string") {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
-                    currentUserId = payload.userId || payload.id;
+                    currentUserId = payload.userId || payload.id || currentUserId;
                     decodedUsername = payload.username || payload.sub || username;
+                    
+                    // 🚀 Check if the token belongs to an Officer
+                    const roles = payload.roles || [];
+                    if (roles.includes("ROLE_OFFICER") || roles.includes("OFFICER")) {
+                        isOfficer = true;
+                    }
                 } catch (decodeErr) {
                     if (!isAdmin) throw new Error("Invalid token received from server.");
                 }
@@ -46,7 +53,7 @@ export default function LoginPage() {
                 currentUserId = "admin-sys-id"; 
             }
 
-            if (!currentUserId && !isAdmin) {
+            if (!currentUserId && !isAdmin && !isOfficer) {
                 throw new Error("Could not extract User ID. Please try logging in again.");
             }
 
@@ -58,7 +65,12 @@ export default function LoginPage() {
                 isAdmin: isAdmin 
             }));
 
-            if (!isAdmin) {
+            // 🚀 THE FIX: If they are Admin OR Officer, skip the DB check and go to profile!
+            if (isAdmin || isOfficer) {
+                login(token);
+                navigate("/profile");
+            } else {
+                // 👤 Only Citizens and Businesses do the DB check
                 try {
                     await getParticipantByUserId(currentUserId);
                     login(token);
@@ -66,16 +78,13 @@ export default function LoginPage() {
                 } catch (profileError) {
                     if (profileError.response && profileError.response.status === 404) {
                         login(token);
-                        window.location.href = "/setup-profile";
+                        navigate("/setup-profile");
                         return;
                     } else {
                         login(token);
                         navigate("/profile");
                     }
                 }
-            } else {
-                login(token);
-                navigate("/profile");
             }
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Invalid credentials.");

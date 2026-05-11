@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerParticipant } from "../api/participantApi";
 import Alert from "../components/Alert";
@@ -6,16 +6,37 @@ import Alert from "../components/Alert";
 export default function SetupProfilePage() {
     const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem("userData") || "{}");
+    const token = localStorage.getItem("token") || "";
     const currentUserId = user.id || user.userId;
 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [derivedEntityType, setDerivedEntityType] = useState("CITIZEN");
+
     const [formData, setFormData] = useState({
-        entityType: "CITIZEN",
         legalName: "",
         address: "",
-        contactPhone: ""
+        phone: "",
+        email: user.email || "",
+        otherContact: ""
     });
+
+    useEffect(() => {
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const roles = payload.roles || [];
+                const primaryRole = payload.primaryRole || "";
+                
+                if (roles.includes("ROLE_BUSINESS_OWNER") || primaryRole === "BUSINESS_OWNER") {
+                    setDerivedEntityType("BUSINESS_OWNER");
+                } else {
+                    setDerivedEntityType("CITIZEN");
+                }
+            } catch (e) {
+            }
+        }
+    }, [token]);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -26,13 +47,25 @@ export default function SetupProfilePage() {
         setLoading(true);
         setError("");
 
+        if (!formData.phone && !formData.email) {
+            setError("You must provide at least a Phone Number or an Email address.");
+            setLoading(false);
+            return;
+        }
+
+        const contactJson = JSON.stringify({
+            phone: formData.phone,
+            email: formData.email,
+            other: formData.otherContact
+        });
+
         try {
             await registerParticipant({
                 userId: currentUserId,
-                entityType: formData.entityType,
+                entityType: derivedEntityType,
                 legalName: formData.legalName,
                 address: formData.address,
-                contactInfo: JSON.stringify({ phone: formData.contactPhone })
+                contactInfo: contactJson
             });
 
             navigate("/profile");
@@ -45,7 +78,7 @@ export default function SetupProfilePage() {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-light align-items-center justify-content-center p-3">
-            <div className="w-100" style={{ maxWidth: "500px" }}>
+            <div className="w-100" style={{ maxWidth: "550px" }}>
                 <div className="text-center mb-4">
                     <h2 className="fw-bold text-success mb-1">Welcome, {user.username}!</h2>
                     <p className="text-muted">Let's complete your GreenGov profile</p>
@@ -56,21 +89,7 @@ export default function SetupProfilePage() {
                 <div className="card shadow-sm border-0 rounded-3 p-4">
                     <form onSubmit={handleSubmit}>
                         <div className="mb-3">
-                            <label className="form-label fw-semibold small">Entity Type</label>
-                            <select
-                                className="form-select bg-light"
-                                name="entityType"
-                                value={formData.entityType}
-                                onChange={handleChange}
-                                required
-                            >
-                                <option value="CITIZEN">Citizen</option>
-                                <option value="BUSINESS_OWNER">Business Owner</option>
-                            </select>
-                        </div>
-
-                        <div className="mb-3">
-                            <label className="form-label fw-semibold small">Legal Name</label>
+                            <label className="form-label fw-semibold small">Legal Name <span className="text-danger">*</span></label>
                             <input
                                 type="text"
                                 className="form-control bg-light"
@@ -82,33 +101,60 @@ export default function SetupProfilePage() {
                         </div>
 
                         <div className="mb-3">
-                            <label className="form-label fw-semibold small">Address</label>
+                            <label className="form-label fw-semibold small">Address <span className="text-danger">*</span></label>
                             <textarea
                                 className="form-control bg-light"
                                 name="address"
                                 value={formData.address}
                                 onChange={handleChange}
-                                rows="3"
+                                rows="2"
                                 required
                             />
                         </div>
 
-                        <div className="mb-4">
-                            <label className="form-label fw-semibold small">Contact Phone</label>
-                            <input
-                                type="tel"
-                                className="form-control bg-light"
-                                name="contactPhone"
-                                value={formData.contactPhone}
-                                onChange={handleChange}
-                                placeholder="+91-9876543210"
-                                required
-                            />
+                        <hr className="my-4 text-muted" />
+                        <h6 className="fw-bold mb-3">Contact Information</h6>
+                        <p className="small text-muted mb-3">Provide at least one method of contact.</p>
+
+                        <div className="row g-3 mb-3">
+                            <div className="col-md-6">
+                                <label className="form-label fw-semibold small">Phone Number <span className="text-danger">*</span></label>
+                                <input
+                                    type="tel"
+                                    className="form-control bg-light"
+                                    name="phone"
+                                    value={formData.phone}
+                                    onChange={handleChange}
+                                    placeholder="+91-..."
+                                />
+                            </div>
+                            <div className="col-md-6">
+                                <label className="form-label fw-semibold small">Email Address <span className="text-danger">*</span></label>
+                                <input
+                                    type="email"
+                                    className="form-control bg-light"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="name@example.com"
+                                />
+                            </div>
+                            <div className="col-12">
+                                <label className="form-label fw-semibold small">Alternate Contact</label>
+                                <input
+                                    type="text"
+                                    className="form-control bg-light"
+                                    name="otherContact"
+                                    value={formData.otherContact}
+                                    onChange={handleChange}
+                                    placeholder="WhatsApp, Landline, etc."
+                                />
+                            </div>
                         </div>
 
                         <button 
                             type="submit" 
-                            className="btn btn-success w-100" 
+                            className="btn btn-success w-100 mt-2" 
                             disabled={loading}
                         >
                             {loading ? (

@@ -33,6 +33,12 @@ export const uploadDocument = async (participantId, payload) => {
   return res.data;
 };
 
+// Fetch all participants for the Compliance Dashboard
+export const getAllParticipants = async () => {
+  // Assuming your axios instance is named 'api'. Adjust if it's named 'axiosInstance' or similar.
+  const response = await api.get('/api/participants'); 
+  return response.data;
+};
 export const updateDocumentStatus = async (
   participantId,
   documentId,

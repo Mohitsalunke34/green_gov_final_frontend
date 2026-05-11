@@ -17,30 +17,39 @@ export default function ProfilePage() {
     const [editMode, setEditMode] = useState(false);
     const [formData, setFormData] = useState({});
     const [showModal, setShowModal] = useState(false);
-    const [phoneDisplay, setPhoneDisplay] = useState("N/A");
 
     const loadParticipantProfile = useCallback(async () => {
         try {
             const profileData = await getParticipantByUserId(currentUserId);
             setProfile(profileData);
+
+            let parsedPhone = "";
+            let parsedEmail = "";
+            let parsedOther = "";
+
+            if (profileData.contactInfo) {
+                try {
+                    const parsedContact = JSON.parse(profileData.contactInfo);
+                    parsedPhone = parsedContact.phone || "";
+                    parsedEmail = parsedContact.email || "";
+                    parsedOther = parsedContact.other || "";
+                } catch (e) {
+                    parsedPhone = profileData.contactInfo;
+                }
+            }
+
             setFormData({
                 legalName: profileData.legalName || "",
-                address: profileData.address || ""
+                address: profileData.address || "",
+                phone: parsedPhone,
+                email: parsedEmail,
+                otherContact: parsedOther
             });
 
             const actualParticipantId = profileData.id || profileData.participantId;
             if (actualParticipantId) {
                 const docsData = await getParticipantDocuments(actualParticipantId);
                 setDocuments(docsData || []);
-            }
-
-            if (profileData.contactInfo) {
-                try {
-                    const parsedContact = JSON.parse(profileData.contactInfo);
-                    setPhoneDisplay(parsedContact.phone || "N/A");
-                } catch (e) {
-                    setPhoneDisplay(profileData.contactInfo);
-                }
             }
             setError("");
         } catch (err) {
@@ -100,11 +109,22 @@ export default function ProfilePage() {
     };
 
     const handleSaveProfile = async () => {
+        if (!formData.legalName || !formData.address || (!formData.phone && !formData.email)) {
+            setError("Please fill in all mandatory fields.");
+            return;
+        }
+
         try {
+            const contactJson = JSON.stringify({
+                phone: formData.phone,
+                email: formData.email,
+                other: formData.otherContact
+            });
+
             await updateParticipant(profile.id, {
                 legalName: formData.legalName,
                 address: formData.address,
-                contactInfo: profile.contactInfo 
+                contactInfo: contactJson 
             });
             setEditMode(false);
             loadParticipantProfile();
@@ -148,7 +168,7 @@ export default function ProfilePage() {
                             {editMode && !isInternalUser ? (
                                 <>
                                     <div className="mb-3">
-                                        <label className="form-label fw-bold">Legal Name</label>
+                                        <label className="form-label fw-bold">Legal Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control"
@@ -158,7 +178,7 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                     <div className="mb-3">
-                                        <label className="form-label fw-bold">Address</label>
+                                        <label className="form-label fw-bold">Address <span className="text-danger">*</span></label>
                                         <textarea
                                             className="form-control"
                                             name="address"
@@ -167,6 +187,41 @@ export default function ProfilePage() {
                                             onChange={handleInputChange}
                                         />
                                     </div>
+                                    
+                                    <hr className="my-3 text-muted" />
+                                    <h6 className="fw-bold mb-3">Contact Information</h6>
+                                    
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Phone Number <span className="text-danger">*</span></label>
+                                        <input
+                                            type="tel"
+                                            className="form-control"
+                                            name="phone"
+                                            value={formData.phone}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Email Address <span className="text-danger">*</span></label>
+                                        <input
+                                            type="email"
+                                            className="form-control"
+                                            name="email"
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+                                    <div className="mb-3">
+                                        <label className="form-label fw-bold">Alternate Contact</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            name="otherContact"
+                                            value={formData.otherContact}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+
                                     <div className="mt-4">
                                         <button className="btn btn-success me-2" onClick={handleSaveProfile}>
                                             Save Changes
@@ -198,8 +253,18 @@ export default function ProfilePage() {
                                         <>
                                             <div className="mb-3">
                                                 <label className="form-label text-muted small mb-0">Phone Number</label>
-                                                <p className="fw-semibold">{phoneDisplay}</p>
+                                                <p className="fw-semibold">{formData.phone || "N/A"}</p>
                                             </div>
+                                            <div className="mb-3">
+                                                <label className="form-label text-muted small mb-0">Email</label>
+                                                <p className="fw-semibold">{formData.email || "N/A"}</p>
+                                            </div>
+                                            {formData.otherContact && (
+                                                <div className="mb-3">
+                                                    <label className="form-label text-muted small mb-0">Alternate Contact</label>
+                                                    <p className="fw-semibold">{formData.otherContact}</p>
+                                                </div>
+                                            )}
                                             <div className="mb-3">
                                                 <label className="form-label text-muted small mb-0">Address</label>
                                                 <p className="fw-semibold">{profile.address || "N/A"}</p>

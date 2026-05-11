@@ -1,26 +1,42 @@
 import { Link, useLocation } from "react-router-dom";
-
-/**
- * Sidebar Navigation
- * All authenticated users see ALL navigation items.
- * Permission checks happen inside each page component, not here.
- */
-const NAV_ITEMS = [
-    { path: "/dashboard",    label: "Dashboard" },
-    { path: "/programs",     label: "Programs" },
-    { path: "/projects",     label: "Projects" },
-    { path: "/applications", label: "Applications" },
-    { path: "/incentives",   label: "Incentives & Disbursements" },
-    { path: "/compliance",   label: "Compliance" },
-    { path: "/audit",        label: "Audit" },
-    { path: "/reports",      label: "Reports & Analytics" },
-    { path: "/resources",    label: "Resource & Infrastructure" },
-    { path: "/officers",     label: "Officers Management" },
-    { path: "/profile",      label: "My Profile" },
-];
+import { useState, useEffect } from "react";
 
 export default function Sidebar() {
     const location = useLocation();
+    const [isEnvOfficer, setIsEnvOfficer] = useState(false);
+
+    // Crack open the token to check if they are the Environmental Officer
+    useEffect(() => {
+        const token = localStorage.getItem("token") || "";
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const authorities = payload.authorities || [];
+                if (authorities.includes("ENVIRONMENT_OFFICER")) {
+                    setIsEnvOfficer(true);
+                }
+            } catch (e) {
+                console.error("Token decoding failed in Sidebar", e);
+            }
+        }
+    }, []);
+
+    // Build the navigation array dynamically
+    const NAV_ITEMS = [
+        { path: "/dashboard",    label: "Dashboard" },
+        { path: "/programs",     label: "Programs" },
+        { path: "/projects",     label: "Projects" },
+        { path: "/applications", label: "Applications" },
+        { path: "/incentives",   label: "Incentives & Disbursements" },
+        { path: "/compliance",   label: "Compliance" },
+        { path: "/audit",        label: "Audit" },
+        { path: "/reports",      label: "Reports & Analytics" },
+        { path: "/resources",    label: "Resource & Infrastructure" },
+        { path: "/officers",     label: "Officers Management" },
+        // 🚀 ONLY inject this if they are an Environment Officer!
+        ...(isEnvOfficer ? [{ path: "/officer-dashboard", label: "🛡️ Verification Desk" }] : []),
+        { path: "/profile",      label: "My Profile" },
+    ];
 
     return (
         <div className="bg-white border-end" style={{ width: 230, minHeight: "100%", flexShrink: 0 }}>
