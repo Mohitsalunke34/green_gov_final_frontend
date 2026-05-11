@@ -1,291 +1,123 @@
-import { useState, useEffect, useCallback } from "react";
-import { getParticipantByUserId, updateParticipant, getParticipantDocuments } from "../api/participantApi";
-import Loading from "../components/Loading";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { registerParticipant } from "../api/participantApi";
 import Alert from "../components/Alert";
-import DocumentUploadModal from "../components/DocumentUploadModal";
 
-export default function ProfilePage() {
+export default function SetupProfilePage() {
+    const navigate = useNavigate();
     const user = JSON.parse(localStorage.getItem("userData") || "{}");
-    const token = localStorage.getItem("token") || "";
     const currentUserId = user.id || user.userId;
 
-    const [profileType, setProfileType] = useState("CITIZEN");
-    const [profile, setProfile] = useState({});
-    const [documents, setDocuments] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
-    const [editMode, setEditMode] = useState(false);
-    const [formData, setFormData] = useState({});
-    const [showModal, setShowModal] = useState(false);
-    const [phoneDisplay, setPhoneDisplay] = useState("N/A");
+    const [formData, setFormData] = useState({
+        entityType: "CITIZEN",
+        legalName: "",
+        address: "",
+        contactPhone: ""
+    });
 
-    const loadParticipantProfile = useCallback(async () => {
+    const handleChange = (e) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
+
         try {
-            const profileData = await getParticipantByUserId(currentUserId);
-            setProfile(profileData);
-            setFormData({
-                legalName: profileData.legalName || "",
-                address: profileData.address || ""
+            await registerParticipant({
+                userId: currentUserId,
+                entityType: formData.entityType,
+                legalName: formData.legalName,
+                address: formData.address,
+                contactInfo: JSON.stringify({ phone: formData.contactPhone })
             });
 
-            const actualParticipantId = profileData.id || profileData.participantId;
-            if (actualParticipantId) {
-                const docsData = await getParticipantDocuments(actualParticipantId);
-                setDocuments(docsData || []);
-            }
-
-            if (profileData.contactInfo) {
-                try {
-                    const parsedContact = JSON.parse(profileData.contactInfo);
-                    setPhoneDisplay(parsedContact.phone || "N/A");
-                } catch (e) {
-                    setPhoneDisplay(profileData.contactInfo);
-                }
-            }
-            setError("");
+            navigate("/profile");
         } catch (err) {
-            setError(err.response?.data?.message || "Failed to load participant profile.");
+            setError(err.response?.data?.message || "Failed to create profile.");
         } finally {
             setLoading(false);
         }
-    }, [currentUserId]);
-
-    useEffect(() => {
-        if (!currentUserId || !token) {
-            setError("User data not found. Please log in again.");
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            const roles = payload.roles || [];
-            const authorities = payload.authorities || [];
-            const tokenUsername = payload.sub || user.username;
-
-            if (roles.includes("ROLE_ADMIN") || roles.includes("ADMIN")) {
-                setProfileType("ADMIN");
-                setProfile({
-                    legalName: tokenUsername,
-                    entityType: "ADMIN",
-                    designation: "ADMIN",
-                    status: "ACTIVE_STAFF"
-                });
-                setLoading(false);
-            } else if (roles.includes("ROLE_OFFICER") || roles.includes("OFFICER")) {
-                setProfileType("OFFICER");
-                setProfile({
-                    legalName: tokenUsername,
-                    entityType: "OFFICER",
-                    designation: authorities.length > 0 ? authorities.join(", ") : "OFFICER",
-                    status: "ACTIVE_STAFF"
-                });
-                setLoading(false);
-            } else {
-                setProfileType("CITIZEN");
-                loadParticipantProfile();
-            }
-        } catch (e) {
-            setProfileType("CITIZEN");
-            loadParticipantProfile();
-        }
-    }, [currentUserId, token, user.username, loadParticipantProfile]);
-
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
     };
-
-    const handleSaveProfile = async () => {
-        try {
-            await updateParticipant(profile.id, {
-                legalName: formData.legalName,
-                address: formData.address,
-                contactInfo: profile.contactInfo 
-            });
-            setEditMode(false);
-            loadParticipantProfile();
-            setError("");
-        } catch (err) {
-            setError(err.response?.data?.message || "Failed to update profile");
-        }
-    };
-
-    const handleViewDocument = (base64Data) => {
-        if (!base64Data) return;
-        let fileSource = base64Data;
-        if (!base64Data.startsWith("data:")) {
-            const isPdf = base64Data.startsWith("JVBERi"); 
-            const mimeType = isPdf ? "application/pdf" : "image/png";
-            fileSource = `data:${mimeType};base64,${base64Data}`;
-        }
-        const newWindow = window.open();
-        if (newWindow) {
-            newWindow.document.write(`<iframe src="${fileSource}" frameborder="0" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe>`);
-        }
-    };
-
-    if (loading) return <Loading />;
-
-    const isInternalUser = profileType === "ADMIN" || profileType === "OFFICER";
 
     return (
-        <div>
-            <h2 className="mb-4">My Profile</h2>
-
-            {error && <Alert message={error} type="danger" />}
-
-            <div className="row">
-                <div className={`col-md-${isInternalUser ? '12' : '6'} mb-4`}>
-                    <div className="card shadow-sm border-0">
-                        <div className="card-header bg-success text-white">
-                            <h5 className="mb-0">Profile Information</h5>
-                        </div>
-                        <div className="card-body">
-                            {editMode && !isInternalUser ? (
-                                <>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">Legal Name</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            name="legalName"
-                                            value={formData.legalName}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label fw-bold">Address</label>
-                                        <textarea
-                                            className="form-control"
-                                            name="address"
-                                            rows="3"
-                                            value={formData.address}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="mt-4">
-                                        <button className="btn btn-success me-2" onClick={handleSaveProfile}>
-                                            Save Changes
-                                        </button>
-                                        <button className="btn btn-secondary" onClick={() => setEditMode(false)}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="mb-3">
-                                        <label className="form-label text-muted small mb-0">Role</label>
-                                        <p className="fw-semibold">{profile.entityType || profileType}</p>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label text-muted small mb-0">{isInternalUser ? "Username" : "Legal Name"}</label>
-                                        <p className="fw-semibold">{profile.legalName || "N/A"}</p>
-                                    </div>
-                                    
-                                    {isInternalUser && (
-                                        <div className="mb-3">
-                                            <label className="form-label text-muted small mb-0">Designation / Authorities</label>
-                                            <p className="fw-semibold text-primary">{profile.designation || "N/A"}</p>
-                                        </div>
-                                    )}
-
-                                    {!isInternalUser && (
-                                        <>
-                                            <div className="mb-3">
-                                                <label className="form-label text-muted small mb-0">Phone Number</label>
-                                                <p className="fw-semibold">{phoneDisplay}</p>
-                                            </div>
-                                            <div className="mb-3">
-                                                <label className="form-label text-muted small mb-0">Address</label>
-                                                <p className="fw-semibold">{profile.address || "N/A"}</p>
-                                            </div>
-                                        </>
-                                    )}
-
-                                    <div className="mb-4">
-                                        <label className="form-label text-muted small mb-0">Account Status</label>
-                                        <div>
-                                            <span className={`badge bg-${profile.status === "VERIFIED" || profile.status === "ACTIVE_STAFF" ? "success" : profile.status === "REJECTED" ? "danger" : "warning"}`}>
-                                                {profile.status || "PENDING"}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    {!isInternalUser && (
-                                        <button className="btn btn-outline-success w-100" onClick={() => setEditMode(true)}>
-                                            Edit Profile
-                                        </button>
-                                    )}
-                                </>
-                            )}
-                        </div>
-                    </div>
+        <div className="d-flex flex-column min-vh-100 bg-light align-items-center justify-content-center p-3">
+            <div className="w-100" style={{ maxWidth: "500px" }}>
+                <div className="text-center mb-4">
+                    <h2 className="fw-bold text-success mb-1">Welcome, {user.username}!</h2>
+                    <p className="text-muted">Let's complete your GreenGov profile</p>
                 </div>
 
-                {!isInternalUser && (
-                    <div className="col-md-6 mb-4">
-                        <div className="card shadow-sm border-0">
-                            <div className="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                                <h5 className="mb-0">My Documents</h5>
-                                <button className="btn btn-sm btn-success" onClick={() => setShowModal(true)}>
-                                    + Upload
-                                </button>
-                            </div>
-                            <div className="card-body p-0">
-                                {documents.length === 0 ? (
-                                    <div className="p-4 text-center text-muted">
-                                        <p className="mb-0">No documents uploaded yet.</p>
-                                        <small>Upload an ID Proof or License to get verified.</small>
-                                    </div>
-                                ) : (
-                                    <div className="table-responsive">
-                                        <table className="table table-hover align-middle mb-0">
-                                            <thead className="table-light">
-                                                <tr>
-                                                    <th className="ps-3">Type</th>
-                                                    <th>Status</th>
-                                                    <th className="text-end pe-3">Action</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {documents.map((doc) => (
-                                                    <tr key={doc.id}>
-                                                        <td className="ps-3 fw-semibold">{doc.documentType}</td>
-                                                        <td>
-                                                            <span className={`badge bg-${doc.verificationStatus === "VERIFIED" ? "success" : doc.verificationStatus === "REJECTED" ? "danger" : "warning"}`}>
-                                                                {doc.verificationStatus || doc.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="text-end pe-3">
-                                                            <button 
-                                                                className="btn btn-sm btn-outline-primary"
-                                                                onClick={() => handleViewDocument(doc.fileUri || doc.fileData)}
-                                                            >
-                                                                View
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
+                {error && <Alert type="danger" message={error} />}
 
-            {!isInternalUser && (
-                <DocumentUploadModal 
-                    show={showModal} 
-                    handleClose={() => setShowModal(false)} 
-                    profileId={profile.id} 
-                    onUploadSuccess={loadParticipantProfile} 
-                />
-            )}
+                <div className="card shadow-sm border-0 rounded-3 p-4">
+                    <form onSubmit={handleSubmit}>
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold small">Entity Type</label>
+                            <select
+                                className="form-select bg-light"
+                                name="entityType"
+                                value={formData.entityType}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="CITIZEN">Citizen</option>
+                                <option value="BUSINESS_OWNER">Business Owner</option>
+                            </select>
+                        </div>
+
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold small">Legal Name</label>
+                            <input
+                                type="text"
+                                className="form-control bg-light"
+                                name="legalName"
+                                value={formData.legalName}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+
+                        <div className="mb-3">
+                            <label className="form-label fw-semibold small">Address</label>
+                            <textarea
+                                className="form-control bg-light"
+                                name="address"
+                                value={formData.address}
+                                onChange={handleChange}
+                                rows="3"
+                                required
+                            />
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="form-label fw-semibold small">Contact Phone</label>
+                            <input
+                                type="tel"
+                                className="form-control bg-light"
+                                name="contactPhone"
+                                value={formData.contactPhone}
+                                onChange={handleChange}
+                                placeholder="+91-9876543210"
+                                required
+                            />
+                        </div>
+
+                        <button 
+                            type="submit" 
+                            className="btn btn-success w-100" 
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <span><span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...</span>
+                            ) : "Complete Profile"}
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
     );
 }
