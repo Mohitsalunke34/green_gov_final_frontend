@@ -195,7 +195,9 @@ export default function RegisterPage() {
                                                 value={officerForm.officerType} onChange={handleOfficerChange} required>
                                                 <option value="PROGRAM_MANAGER">Program Manager</option>
                                                 <option value="COMPLIANCE_OFFICER">Compliance Officer</option>
-                                                <option value="FIELD_INSPECTOR">Field Inspector</option>
+                                                <option value="ENVIRONMENT_OFFICER">Environment Officer</option>
+                                                <option value="DISBURSEMENT_OFFICER">Disbursement Officer</option>
+                                                <option value="AUDIT_MANAGER">Audit Manager</option>
                                             </select>
                                         </div>
                                         <div className="col-md-6">
