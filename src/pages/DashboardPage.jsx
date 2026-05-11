@@ -6,6 +6,7 @@ const ALL_SERVICE_CARDS = [
         title: "Officers Management",
         desc: "Verify and manage officer accounts. Approve or reject pending officer registrations.",
         path: "/officers",
+        requiredAuthority: "ADMIN",
     },
     {
         title: "Programs",
@@ -58,8 +59,15 @@ export default function DashboardPage() {
     const roles       = getRoles();
     const isProgramManager = authorities.includes("PROGRAM_MANAGER");
 
-    // Show all cards to all authenticated users
-    const visibleCards = ALL_SERVICE_CARDS;
+    // Filter cards based on user permissions
+    const visibleCards = ALL_SERVICE_CARDS.filter(card => {
+        // If card requires specific authority, check it
+        if (card.requiredAuthority) {
+            return authorities.includes(card.requiredAuthority);
+        }
+        // Otherwise show to everyone
+        return true;
+    });
     
     const getRoleLabel = () => {
         if (authorities.includes("ADMIN")) return "Administrator";

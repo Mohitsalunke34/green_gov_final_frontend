@@ -1,9 +1,10 @@
 import { Link, useLocation } from "react-router-dom";
+import { usePermission } from "../hooks/usePermission";
 
 /**
  * Sidebar Navigation
- * All authenticated users see ALL navigation items.
- * Permission checks happen inside each page component, not here.
+ * Most authenticated users see all navigation items.
+ * Officers Management is only visible to admins.
  */
 const NAV_ITEMS = [
     { path: "/dashboard",    label: "Dashboard" },
@@ -15,12 +16,13 @@ const NAV_ITEMS = [
     { path: "/audit",        label: "Audit" },
     { path: "/reports",      label: "Reports & Analytics" },
     { path: "/resources",    label: "Resource & Infrastructure" },
-    { path: "/officers",     label: "Officers Management" },
+    { path: "/officers",     label: "Officers Management", adminOnly: true },
     { path: "/profile",      label: "My Profile" },
 ];
 
 export default function Sidebar() {
     const location = useLocation();
+    const { isAdmin } = usePermission();
 
     return (
         <div className="bg-white border-end" style={{ width: 230, minHeight: "100%", flexShrink: 0 }}>
@@ -29,6 +31,11 @@ export default function Sidebar() {
             </div>
             <nav className="py-2">
                 {NAV_ITEMS.map((item) => {
+                    // Skip admin-only items if user is not admin
+                    if (item.adminOnly && !isAdmin()) {
+                        return null;
+                    }
+
                     const isActive = location.pathname === item.path;
                     return (
                         <Link
