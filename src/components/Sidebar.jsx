@@ -1,10 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
+import { usePermission } from "../hooks/usePermission";
 import { useState, useEffect } from "react";
 
 export default function Sidebar() {
     const location = useLocation();
     const [isEnvOfficer, setIsEnvOfficer] = useState(false);
-
+    const { isAdmin } = usePermission();
     // Crack open the token to check if they are the Environmental Officer
     useEffect(() => {
         const token = localStorage.getItem("token") || "";
@@ -33,10 +34,11 @@ export default function Sidebar() {
         { path: "/reports",      label: "Reports & Analytics" },
         { path: "/resources",    label: "Resource & Infrastructure" },
         { path: "/officers",     label: "Officers Management" },
-        // 🚀 ONLY inject this if they are an Environment Officer!
+        // ONLY inject this if they are an Environment Officer!
         ...(isEnvOfficer ? [{ path: "/officer-dashboard", label: "🛡️ Verification Desk" }] : []),
         { path: "/profile",      label: "My Profile" },
     ];
+
 
     return (
         <div className="bg-white border-end" style={{ width: 230, minHeight: "100%", flexShrink: 0 }}>
@@ -45,6 +47,11 @@ export default function Sidebar() {
             </div>
             <nav className="py-2">
                 {NAV_ITEMS.map((item) => {
+                    // Skip admin-only items if user is not admin
+                    if (item.adminOnly && !isAdmin()) {
+                        return null;
+                    }
+
                     const isActive = location.pathname === item.path;
                     return (
                         <Link
