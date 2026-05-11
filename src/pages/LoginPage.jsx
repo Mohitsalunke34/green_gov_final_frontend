@@ -31,17 +31,19 @@ export default function LoginPage() {
 
             let currentUserId = data.id || data.userId;
             let decodedUsername = data.username || username;
-            let decodedRoles = data.roles || [];
 
-            if ((!currentUserId || !decodedRoles.length) && typeof token === "string") {
+            if (!currentUserId && typeof token === "string") {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
-                    currentUserId = currentUserId || payload.userId || payload.id;
-                    decodedUsername = decodedUsername || payload.username || payload.sub || username;
-                    decodedRoles = payload.roles || payload.authorities || decodedRoles;
+                    currentUserId = payload.userId || payload.id;
+                    decodedUsername = payload.username || payload.sub || username;
                 } catch (decodeErr) {
-                    throw new Error("Invalid token received from server.");
+                    if (!isAdmin) throw new Error("Invalid token received from server.");
                 }
+            }
+
+            if (isAdmin && !currentUserId) {
+                currentUserId = "admin-sys-id"; 
             }
 
             if (!currentUserId && !isAdmin) {
@@ -53,7 +55,7 @@ export default function LoginPage() {
                 id: currentUserId,
                 username: decodedUsername,
                 email: data.email || "",
-                roles: decodedRoles
+                isAdmin: isAdmin 
             }));
 
             if (!isAdmin) {
@@ -73,7 +75,7 @@ export default function LoginPage() {
                 }
             } else {
                 login(token);
-                navigate("/dashboard");
+                navigate("/profile");
             }
         } catch (err) {
             setError(err.response?.data?.message || err.message || "Invalid credentials.");
