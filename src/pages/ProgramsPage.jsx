@@ -8,8 +8,15 @@ import Loading from "../components/Loading";
 import Alert from "../components/Alert";
 import ActionButton from "../components/ActionButton";
 import ContentGate from "../components/ContentGate";
+import { getParticipantByUserId } from "../api/participantApi";
+import { useAuth } from "../auth/AuthContext";
 
 export default function ProgramsPage() {
+    
+const { getUserId, isAuthenticated } = useAuth();
+
+  const userId = getUserId();
+
     const [programs, setPrograms]               = useState([]);
     const [loading, setLoading]                 = useState(true);
     const [error, setError]                     = useState("");
@@ -38,7 +45,9 @@ export default function ProgramsPage() {
     useEffect(() => { loadPrograms(); }, []);
 
     const loadPrograms = async () => {
-        try { setLoading(true); const data = await fetchAllPrograms(); setPrograms(data || []); setError(""); }
+        try { setLoading(true); const data = await fetchAllPrograms(); setPrograms(data || []); setError(""); 
+            
+        }
         catch (err) { setError(err.response?.data?.message || "Failed to load programs"); }
         finally { setLoading(false); }
     };
@@ -51,7 +60,13 @@ export default function ProgramsPage() {
         e.preventDefault(); clearMessages();
         try {
             setLoading(true);
-            await createProgram(formData);
+            
+const payload = {
+            ...formData,
+            ownerUserId: userId,
+        };
+
+            await createProgram(payload);
             setSuccess("Program created successfully.");
             setFormData({ ...emptyForm }); setShowCreateForm(false);
             loadPrograms();
@@ -74,7 +89,7 @@ export default function ProgramsPage() {
             startDate: p.startDate ? p.startDate.split("T")[0] : "",
             endDate: p.endDate ? p.endDate.split("T")[0] : "",
             budget: p.budget || "", status: p.status || "ACTIVE",
-            ownerUserId: p.ownerUserId || "",
+            ownerUserId: userId,
         });
         setShowCreateForm(false); clearMessages();
     };
@@ -83,7 +98,14 @@ export default function ProgramsPage() {
         e.preventDefault(); clearMessages();
         try {
             setLoading(true);
-            await updateProgram(editingProgram, formData);
+            
+const payload = {
+            ...formData,
+            ownerUserId: userId,
+        };
+
+        await updateProgram(editingProgram, payload)
+
             setSuccess("Program updated successfully.");
             setEditingProgram(null); loadPrograms();
         } catch (err) { setError(err.response?.data?.message || "Failed to update program"); }
@@ -160,10 +182,7 @@ export default function ProgramsPage() {
                                         <label className="form-label small fw-semibold">Program Title</label>
                                         <input type="text" className="form-control" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Rooftop Solar Subsidy 2026" required />
                                     </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-semibold">Owner User ID</label>
-                                        <input type="number" className="form-control" name="ownerUserId" value={formData.ownerUserId} onChange={handleInputChange} required />
-                                    </div>
+                                    
                                     <div className="col-12">
                                         <label className="form-label small fw-semibold">Description</label>
                                         <textarea className="form-control" name="description" rows="2" value={formData.description} onChange={handleInputChange} />
