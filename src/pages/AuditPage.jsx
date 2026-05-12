@@ -5,6 +5,7 @@ import {
   getAuditsByComplianceId,
   closeAudit,
   getComplianceLookup,
+  getAllAudits,
 } from "../api/auditApi";
 
 import Loading from "../components/Loading";
@@ -65,7 +66,11 @@ export default function AuditPage() {
 
       if (filter.type === "status" && filter.value) {
         data = await getAuditsByStatus(filter.value);
-      } else if (filter.type === "compliance" && filter.value) {
+      } 
+      else if(filter.type === "all"){
+        data = await getAllAudits();
+      }
+      else if (filter.type === "compliance" && filter.value) {
         data = await getAuditsByComplianceId(filter.value);
       }
 
