@@ -179,10 +179,7 @@ export default function ProgramsPage() {
                                         <label className="form-label small fw-semibold">Program Title</label>
                                         <input type="text" className="form-control" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. Rooftop Solar Subsidy 2026" required />
                                     </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label small fw-semibold">Owner User ID</label>
-                                        <input type="number" className="form-control" name="ownerUserId" value={formData.ownerUserId} onChange={handleInputChange} required />
-                                    </div>
+                                
                                     <div className="col-12">
                                         <label className="form-label small fw-semibold">Description</label>
                                         <textarea className="form-control" name="description" rows="2" value={formData.description} onChange={handleInputChange} />
@@ -375,3 +372,4 @@ export default function ProgramsPage() {
         </div>
     );
 }
+ 
