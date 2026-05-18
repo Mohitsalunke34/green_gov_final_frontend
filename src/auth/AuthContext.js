@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useCallback, useMemo } from "react";
 
 /*
@@ -129,6 +130,10 @@ export const AuthProvider = ({ children }) => {
     return decodedToken?.authorities || [];
   }, [decodedToken]);
 
+  const getBeneficiaryId = useCallback(() => {
+    return decodedToken?.beneficiaryId ?? null;
+  }, [decodedToken]);
+
   /*
   |---------------------------------------------------------------------------
   | CONVENIENCE HELPERS
@@ -178,6 +183,7 @@ export const AuthProvider = ({ children }) => {
       getUsername,
       getRoles,
       getAuthorities,
+      getBeneficiaryId,
 
       // helpers
       hasRole,
@@ -187,7 +193,7 @@ export const AuthProvider = ({ children }) => {
       isAuthenticated,
       isTokenExpired,
     }),
-    [token, decodedToken, login, logout, getUserId, getUsername, getRoles, getAuthorities, hasRole, hasAuthority, isAuthenticated, isTokenExpired]
+    [token, decodedToken, login, logout, getUserId, getUsername, getRoles, getAuthorities, getBeneficiaryId, hasRole, hasAuthority, isAuthenticated, isTokenExpired]
   );
 
   return (

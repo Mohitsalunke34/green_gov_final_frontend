@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from "recharts";
 import {
@@ -9,18 +10,39 @@ import {
 } from "../api/reportsApi";
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
- 
+
 // Color palette for pie charts
 const COLORS = ["#198754", "#28a745", "#20c997", "#17a2b8", "#ffc107", "#fd7e14"];
- 
+
 // Scope-specific data keys
 const SCOPE_KEYS = {
-    PROJECT: ["totalProjects", "activeProjects", "completedProjects"],
+    PROJECT: ["totalProjects", "activeProjects", "completedProject"],
     COMPLIANCE: ["totalAudits", "compliantCount", "nonCompliantCount"],
-    INCENTIVE: ["totalIncentives", "approvedIncentives", "totalSanctionedAmount", "totalDisbursedAmount"],
-    PROGRAM: ["totalPrograms", "activePrograms", "totalBudget", "remainingBudget"],
+    INCENTIVE: ["totalIncentives", "approvedIncentives", "totalIncentiveAmount", "totalDisbursedAmount"],
+    PROGRAM: ["totalPrograms", "activePrograms", "totalProgramBudget", "remainingProgramBudget"],
 };
- 
+
+// FIXED: Helper function to get only relevant fields for a scope
+const getScopeRelevantFields = (report) => {
+    if (!report || !report.scope) return {};
+    
+    const keys = SCOPE_KEYS[report.scope] || [];
+    const filtered = {};
+    
+    keys.forEach(key => {
+        if (report[key] !== null && report[key] !== undefined) {
+            filtered[key] = report[key];
+        }
+    });
+    
+    // Always include these meta fields
+    filtered.reportId = report.reportId;
+    filtered.scope = report.scope;
+    filtered.generatedDate = report.generatedDate;
+    
+    return filtered;
+};
+
 export default function ReportsPage() {
     const [activeTab, setActiveTab] = useState("analytics");
     const [analytics, setAnalytics] = useState(null);
@@ -30,21 +52,21 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
- 
+
     // Generate report state
     const [generateScope, setGenerateScope] = useState("PROJECT");
     // Fetch by scope state
     const [scopeType, setScopeType] = useState("PROJECT");
     // Fetch by ID state
     const [fetchId, setFetchId] = useState("");
- 
+
     useEffect(() => {
         if (activeTab === "analytics") loadAnalytics();
         else if (activeTab === "summary") loadSummary();
     }, [activeTab]);
- 
+
     const clearMessages = () => { setError(""); setSuccess(""); };
- 
+
     const loadAnalytics = async () => {
         try {
             setLoading(true);
@@ -54,7 +76,7 @@ export default function ReportsPage() {
             setError(err.response?.data?.message || "Failed to load analytics");
         } finally { setLoading(false); }
     };
- 
+
     const loadSummary = async () => {
         try {
             setLoading(true);
@@ -64,19 +86,23 @@ export default function ReportsPage() {
             setError(err.response?.data?.message || "Failed to load summary");
         } finally { setLoading(false); }
     };
- 
+
     const handleGenerateReport = async () => {
         clearMessages();
         try {
             setLoading(true);
+            // FIXED: Generate report and display the full report data
             const data = await generateReport(generateScope);
             setSuccess(`Report of scope "${generateScope}" generated successfully!`);
+            // Store the generated report for immediate display
             setScopeReports(prev => [data, ...prev]);
+            // Also show it in the fetch by ID section for better visibility
+            setReportById(data);
         } catch (err) {
             setError(err.response?.data?.message || "Failed to generate report");
         } finally { setLoading(false); }
     };
- 
+
     const handleFetchByScope = async () => {
         clearMessages();
         try {
@@ -87,7 +113,7 @@ export default function ReportsPage() {
             setError(err.response?.data?.message || "Failed to fetch reports by scope");
         } finally { setLoading(false); }
     };
- 
+
     const handleFetchById = async () => {
         if (!fetchId) { setError("Please enter a Report ID"); return; }
         clearMessages();
@@ -99,7 +125,7 @@ export default function ReportsPage() {
             setError(err.response?.data?.message || "Failed to fetch report");
         } finally { setLoading(false); }
     };
- 
+
     // Filter and format data for pie charts based on scope
     const getFilteredAnalytics = (data, scope) => {
         if (!data) return {};
@@ -111,7 +137,7 @@ export default function ReportsPage() {
                 return obj;
             }, {});
     };
- 
+
     // Convert analytics object to array for pie chart
     const analyticsToChartData = (analytics) => {
         return Object.entries(analytics).map(([label, value]) => ({
@@ -119,7 +145,7 @@ export default function ReportsPage() {
             value: typeof value === "number" ? value : 0,
         }));
     };
- 
+
     return (
         <div>
             {/* Header */}
@@ -129,17 +155,18 @@ export default function ReportsPage() {
                     <p className="text-muted small mb-0">Generate reports and view analytics by scope</p>
                 </div>
             </div>
- 
+
             {error   && <Alert message={error}   type="danger" />}
             {success && <Alert message={success} type="success" />}
- 
+
             {/* Tabs Navigation */}
             <ul className="nav nav-tabs mb-4">
                 {[
                     { key: "analytics", label: "📈 Analytics Overview" },
                     { key: "generate",  label: "➕ Generate Report" },
                     { key: "scope",     label: "🔍 By Scope" },
-                    
+                    { key: "byId",      label: "🔎 By ID" },
+                    { key: "summary",   label: "📋 Summary" },
                 ].map(tab => (
                     <li className="nav-item" key={tab.key}>
                         <button
@@ -152,9 +179,9 @@ export default function ReportsPage() {
                     </li>
                 ))}
             </ul>
- 
+
             {loading && <Loading />}
- 
+
             {/* ============== ANALYTICS OVERVIEW TAB ============== */}
             {!loading && activeTab === "analytics" && (
                 <div>
@@ -178,7 +205,7 @@ export default function ReportsPage() {
                                             </div>
                                             <div className="col-md-6">
                                                 <p className="text-muted small mb-1">Total Budget</p>
-                                                <h4 className="fw-bold text-success">${analytics.totalBudget || 0}</h4>
+                                                <h4 className="fw-bold text-success">₹{analytics.totalBudget || 0}</h4>
                                             </div>
                                             <div className="col-md-6">
                                                 <p className="text-muted small mb-1">Utilization</p>
@@ -210,7 +237,7 @@ export default function ReportsPage() {
                                     </div>
                                 </div>
                             </div>
- 
+
                             {/* Incentive Analytics */}
                             <div className="col-lg-6">
                                 <div className="card border-0 shadow-sm h-100">
@@ -233,7 +260,7 @@ export default function ReportsPage() {
                                             </div>
                                             <div className="col-md-6">
                                                 <p className="text-muted small mb-1">Avg Disbursement</p>
-                                                <h4 className="fw-bold text-success">${analytics.avgDisbursement || 0}</h4>
+                                                <h4 className="fw-bold text-success">₹{analytics.avgDisbursement || 0}</h4>
                                             </div>
                                         </div>
                                         {analytics.totalIncentives > 0 && (
@@ -261,7 +288,7 @@ export default function ReportsPage() {
                                     </div>
                                 </div>
                             </div>
- 
+
                             {/* Project Analytics */}
                             <div className="col-lg-6">
                                 <div className="card border-0 shadow-sm h-100">
@@ -314,7 +341,7 @@ export default function ReportsPage() {
                                     </div>
                                 </div>
                             </div>
- 
+
                             {/* Compliance Analytics */}
                             <div className="col-lg-6">
                                 <div className="card border-0 shadow-sm h-100">
@@ -379,7 +406,7 @@ export default function ReportsPage() {
                     )}
                 </div>
             )}
- 
+
             {/* ============== GENERATE REPORT TAB ============== */}
             {!loading && activeTab === "generate" && (
                 <div className="card border-0 shadow-sm">
@@ -411,7 +438,7 @@ export default function ReportsPage() {
                                 </button>
                             </div>
                         </div>
- 
+
                         {scopeReports.length > 0 && (
                             <div className="mt-4">
                                 <h6 className="fw-semibold mb-3">Generated Reports</h6>
@@ -422,14 +449,23 @@ export default function ReportsPage() {
                                                 <th>ID</th>
                                                 <th>Scope</th>
                                                 <th>Created Date</th>
+                                                <th>View</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {scopeReports.map((r, idx) => (
-                                                <tr key={r.id || idx}>
-                                                    <td className="fw-semibold">{r.id || "—"}</td>
+                                                <tr key={r.reportId || idx}>
+                                                    <td className="fw-semibold">{r.reportId || "—"}</td>
                                                     <td><span className="badge bg-success">{r.scope || generateScope}</span></td>
-                                                    <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "Now"}</td>
+                                                    <td>{r.generatedDate ? new Date(r.generatedDate).toLocaleDateString() : "Now"}</td>
+                                                    <td>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-success"
+                                                            onClick={() => setReportById(r)}
+                                                        >
+                                                            View
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -440,7 +476,7 @@ export default function ReportsPage() {
                     </div>
                 </div>
             )}
- 
+
             {/* ============== REPORTS BY SCOPE TAB ============== */}
             {!loading && activeTab === "scope" && (
                 <div className="card border-0 shadow-sm">
@@ -468,19 +504,27 @@ export default function ReportsPage() {
                                 </button>
                             </div>
                         </div>
- 
+
                         {scopeReports.length > 0 ? (
                             <div className="table-responsive">
                                 <table className="table table-striped table-hover">
                                     <thead className="table-success">
-                                        <tr><th>ID</th><th>Scope</th><th>Created Date</th></tr>
+                                        <tr><th>ID</th><th>Scope</th><th>Created Date</th><th>View</th></tr>
                                     </thead>
                                     <tbody>
                                         {scopeReports.map((r, idx) => (
-                                            <tr key={r.id || idx}>
-                                                <td className="fw-semibold">{r.id}</td>
+                                            <tr key={r.reportId || idx}>
+                                                <td className="fw-semibold">{r.reportId}</td>
                                                 <td><span className="badge bg-success">{r.scope || scopeType}</span></td>
-                                                <td>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}</td>
+                                                <td>{r.generatedDate ? new Date(r.generatedDate).toLocaleDateString() : "—"}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-sm btn-outline-success"
+                                                        onClick={() => setReportById(r)}
+                                                    >
+                                                        View
+                                                    </button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -492,7 +536,7 @@ export default function ReportsPage() {
                     </div>
                 </div>
             )}
- 
+
             {/* ============== FETCH BY ID TAB ============== */}
             {!loading && activeTab === "byId" && (
                 <div className="card border-0 shadow-sm">
@@ -517,18 +561,23 @@ export default function ReportsPage() {
                                 </button>
                             </div>
                         </div>
- 
+
                         {reportById && (
-                            <div className="card bg-light border-0">
+                            <div className="card bg-light border-0 mt-4">
+                                <div className="card-header bg-success text-white">
+                                    <h6 className="mb-0">📄 Report Details - {reportById.scope}</h6>
+                                </div>
                                 <div className="card-body">
-                                    <h6 className="fw-bold mb-3">📄 Report Details</h6>
+                                    {/* FIXED: Display only relevant fields based on scope */}
                                     <div className="row">
-                                        {Object.entries(reportById)
+                                        {Object.entries(getScopeRelevantFields(reportById))
                                             .filter(([k, v]) => v !== null && v !== undefined && v !== "")
                                             .map(([k, v]) => (
-                                                <div className="col-md-6 mb-2" key={k}>
-                                                    <span className="text-muted text-capitalize">{k.replace(/_/g, " ")}: </span>
-                                                    <strong className="text-success">{String(v)}</strong>
+                                                <div className="col-md-6 mb-3" key={k}>
+                                                    <span className="text-muted text-capitalize">
+                                                        {k.replace(/([A-Z])/g, ' $1').trim()}: 
+                                                    </span>
+                                                    <strong className="text-success d-block">{String(v)}</strong>
                                                 </div>
                                             ))}
                                     </div>
@@ -538,48 +587,62 @@ export default function ReportsPage() {
                     </div>
                 </div>
             )}
- 
+
             {/* ============== SUMMARY TAB ============== */}
             {!loading && activeTab === "summary" && (
                 <div>
-                    {summary ? (
+                    {summary && Object.keys(summary).length > 0 ? (
                         <div className="row g-4">
-                            {Object.entries(summary).map(([scope, data]) => {
-                                const filteredData = getFilteredAnalytics(data, scope);
-                                const chartData = analyticsToChartData(filteredData);
+                            {Object.entries(summary).map(([scope, reportData]) => {
+                                // FIXED: Safely access the report data from the backend response
+                                const data = reportData || {};
+                                const filteredData = getScopeRelevantFields(data);
+                                const scopeKeys = SCOPE_KEYS[scope] || [];
+                                
                                 return (
                                     <div className="col-lg-6" key={scope}>
                                         <div className="card border-0 shadow-sm h-100">
                                             <div className="card-header bg-success text-white">
                                                 <h6 className="mb-0">
-                                                    {scope === "PROJECT" && "📦"}
-                                                    {scope === "COMPLIANCE" && "✅"}
-                                                    {scope === "INCENTIVE" && "💰"}
-                                                    {scope === "PROGRAM" && "🎯"}
+                                                    {scope === "PROJECT" && "📦"} 
+                                                    {scope === "COMPLIANCE" && "✅"} 
+                                                    {scope === "INCENTIVE" && "💰"} 
+                                                    {scope === "PROGRAM" && "🎯"} 
                                                     {" "}{scope} Summary
                                                 </h6>
                                             </div>
                                             <div className="card-body">
                                                 <div className="row text-center mb-3">
-                                                    {Object.entries(filteredData).map(([key, value]) => (
+                                                    {/* FIXED: Display only relevant fields for this scope */}
+                                                    {scopeKeys.map((key) => (
                                                         <div className="col-md-6 mb-2" key={key}>
-                                                            <p className="text-muted small mb-1">{key.replace(/_/g, " ")}</p>
-                                                            <h5 className="fw-bold text-success">{String(value)}</h5>
+                                                            <p className="text-muted small mb-1">
+                                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                            </p>
+                                                            <h5 className="fw-bold text-success">
+                                                                {data[key] !== null && data[key] !== undefined ? String(data[key]) : "—"}
+                                                            </h5>
                                                         </div>
                                                     ))}
                                                 </div>
-                                                {chartData.length > 0 && (
+                                                {/* Pie chart only if there's data */}
+                                                {scopeKeys.some(key => data[key] !== null && data[key] !== undefined) && (
                                                     <ResponsiveContainer width="100%" height={200}>
                                                         <PieChart>
                                                             <Pie
-                                                                data={chartData}
+                                                                data={scopeKeys
+                                                                    .filter(key => data[key] !== null && data[key] !== undefined)
+                                                                    .map(key => ({
+                                                                        name: key.replace(/([A-Z])/g, ' $1').trim(),
+                                                                        value: typeof data[key] === 'number' ? data[key] : 0
+                                                                    }))}
                                                                 cx="50%"
                                                                 cy="50%"
                                                                 innerRadius={40}
                                                                 outerRadius={70}
                                                                 dataKey="value"
                                                             >
-                                                                {chartData.map((entry, index) => (
+                                                                {scopeKeys.map((entry, index) => (
                                                                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                                 ))}
                                                             </Pie>
@@ -608,5 +671,3 @@ export default function ReportsPage() {
         </div>
     );
 }
- 
- 
