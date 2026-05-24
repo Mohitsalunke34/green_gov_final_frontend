@@ -64,3 +64,9 @@ export const applyToProgram = async (applicationData) => {
   const res = await api.post("/api/applications/apply", applicationData);
   return res;
 };
+
+
+export const fetchPrograms = async () => {
+  const res = await api.get("/api/programs/subjects");
+  return res.data;
+};

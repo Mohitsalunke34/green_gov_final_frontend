@@ -12,7 +12,7 @@ import {
 
 //UI components
 import Loading from "../components/Loading";
-import Alert from "../components/Alert";
+import Toast from "../components/Toast";
 
 //api calls for disbursement
 import {
@@ -41,12 +41,10 @@ export default function IncentivesPage() {
 
   const [activeTab, setActiveTab] = useState("list");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [toastMsg, setToastMsg] = useState("");
+  const [toastType, setToastType] = useState("success");
 
-  // ===============================
-  // LIST TAB
-  // ===============================
+ 
   //stores incentives list
   const [incentives, setIncentives] = useState([]);
 
@@ -54,9 +52,6 @@ export default function IncentivesPage() {
   const [beneficiaryNames, setBeneficiaryNames] = useState({});
   const [programNames, setProgramNames] = useState({});
 
-  // ===============================
-  // CREATE TAB
-  // ===============================
   // Dropdown list of participants to select from when creating an incentive
   const [participants, setParticipants] = useState([]);
 
@@ -64,9 +59,9 @@ export default function IncentivesPage() {
   const [selectedParticipant, setSelectedParticipant] = useState("");
   const [createAmount, setCreateAmount] = useState("");
 
-  // ===============================
+
   // DISBURSEMENT TAB
-  // ===============================
+  
   const [selectedIncentiveForDisb, setSelectedIncentiveForDisb] = useState("");
   const [disbAmount, setDisbAmount] = useState("");
   const [disbHistory, setDisbHistory] = useState([]);
@@ -75,10 +70,14 @@ export default function IncentivesPage() {
   const [lookedUpDisb, setLookedUpDisb] = useState(null);
 
 
-  //utility to clear error/success messages before new actions
-  const clearMessages = () => {
-    setError("");
-    setSuccess("");
+  //utility to show toast messages
+  const showToast = (msg, type = "success") => {
+    setToastMsg(msg);
+    setToastType(type);
+  };
+
+  const clearToast = () => {
+    setToastMsg("");
   };
 
 
@@ -128,7 +127,7 @@ export default function IncentivesPage() {
         setProgramNames(newProgramNames);
       }
     } catch {
-      setError("Failed to load incentives");
+      showToast("Failed to load incentives", "danger");
     } finally {
       setLoading(false);
     }
@@ -142,7 +141,7 @@ export default function IncentivesPage() {
       setLoading(true);
       fetchParticipants()
         .then(setParticipants)
-        .catch(() => setError("Failed to load participants"))
+        .catch(() => showToast("Failed to load participants", "danger"))
         .finally(() => setLoading(false));
     }
   }, [activeTab]);
@@ -152,15 +151,15 @@ export default function IncentivesPage() {
   // ===============================
   const handleCreateIncentive = async (e) => {
     e.preventDefault();
-    clearMessages();
+    clearToast();
 
     if (!selectedParticipant) {
-      setError("Please select a participant");
+      showToast("Please select a participant", "danger");
       return;
     }
 
     if (!createAmount || Number(createAmount) <= 0) {
-      setError("Please enter a valid amount");
+      showToast("Please enter a valid amount", "danger");
       return;
     }
 
@@ -173,12 +172,12 @@ export default function IncentivesPage() {
         },
         officerUserId
       );
-      setSuccess("Incentive created successfully");
+      showToast("Incentive created successfully", "success");
       setCreateAmount("");
       setSelectedParticipant("");
       loadIncentives();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create incentive");
+      showToast(err.response?.data?.message || "Failed to create incentive", "danger");
     } finally {
       setLoading(false);
     }
@@ -190,14 +189,14 @@ export default function IncentivesPage() {
   const handleDelete = async (incentiveId) => {
     if (!window.confirm(`Delete incentive #${incentiveId}?`)) return;
 
-    clearMessages();
+    clearToast();
     try {
       setLoading(true);
       await deleteIncentive(incentiveId);
-      setSuccess("Incentive deleted successfully");
+      showToast("Incentive deleted successfully", "success");
       loadIncentives();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete incentive");
+      showToast(err.response?.data?.message || "Failed to delete incentive", "danger");
     } finally {
       setLoading(false);
     }
@@ -208,15 +207,15 @@ export default function IncentivesPage() {
   // ===============================
   const handleCreateDisbursement = async (e) => {
     e.preventDefault();
-    clearMessages();
+    clearToast();
 
     if (!selectedIncentiveForDisb) {
-      setError("Please select an incentive");
+      showToast("Please select an incentive", "danger");
       return;
     }
 
     if (!disbAmount || Number(disbAmount) <= 0) {
-      setError("Please enter a valid amount");
+      showToast("Please enter a valid amount", "danger");
       return;
     }
 
@@ -229,7 +228,7 @@ export default function IncentivesPage() {
         },
         officerUserId
       );
-      setSuccess("Disbursement created successfully");
+      showToast("Disbursement created successfully", "success");
       setDisbAmount("");
       setSelectedIncentiveForDisb("");
       // Refresh disbursement history if available
@@ -237,7 +236,7 @@ export default function IncentivesPage() {
         loadDisbursementHistory(selectedIncentiveForDisb);
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create disbursement");
+      showToast(err.response?.data?.message || "Failed to create disbursement", "danger");
     } finally {
       setLoading(false);
     }
@@ -252,14 +251,14 @@ export default function IncentivesPage() {
       const data = await getDisbursementsByIncentiveId(incentiveId);
       setDisbHistory(Array.isArray(data) ? data : []);
     } catch {
-      setError("Failed to load disbursement history");
+      showToast("Failed to load disbursement history", "danger");
     } finally {
       setLoading(false);
     }
   };
 
   const handleLoadDisbursementHistory = async (incentiveId) => {
-    clearMessages();
+    clearToast();
     setSelectedIncentiveForDisb(incentiveId);
     await loadDisbursementHistory(incentiveId);
   };
@@ -268,10 +267,10 @@ export default function IncentivesPage() {
   // GET DISBURSEMENT BY IDS
   // ===============================
   const handleFetchDisbByIds = async () => {
-    clearMessages();
+    clearToast();
 
     if (!disbLookupIncentiveId || !disbLookupDisbId) {
-      setError("Please enter both incentive ID and disbursement ID");
+      showToast("Please enter both incentive ID and disbursement ID", "danger");
       return;
     }
 
@@ -284,7 +283,7 @@ export default function IncentivesPage() {
       );
       setLookedUpDisb(data);
     } catch (err) {
-      setError(err.response?.data?.message || "Disbursement not found");
+      showToast(err.response?.data?.message || "Disbursement not found", "danger");
     } finally {
       setLoading(false);
     }
@@ -294,13 +293,12 @@ export default function IncentivesPage() {
   // RENDER UI
   // ===============================
   return (
-    <div className="p-4">
-      {error && <Alert message={error} type="danger" />}
-      {success && <Alert message={success} type="success" />}
+    <div className="p-2 p-sm-3 p-md-4">
+      <Toast msg={toastMsg} type={toastType} onClose={clearToast} />
 
       {loading && <Loading />}
 
-      <ul className="nav nav-tabs mb-4">
+      <ul className="nav nav-tabs mb-3 mb-md-4 flex-nowrap overflow-auto">
         {["list", "create", "disbursements"].map((tab) => (
           <li className="nav-item" key={tab}>
             <button
@@ -309,7 +307,7 @@ export default function IncentivesPage() {
               }`}
               onClick={() => {
                 setActiveTab(tab);
-                clearMessages();
+                clearToast();
               }}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -321,35 +319,35 @@ export default function IncentivesPage() {
       {/* ========== LIST TAB ========== */}
       {activeTab === "list" && (
         <div>
-          <h4 className="mb-3">All Incentives</h4>
+          <h4 className="mb-2 mb-md-3 fs-5 fs-md-4">All Incentives</h4>
           {incentives.length === 0 ? (
             <p className="text-muted">No incentives found.</p>
           ) : (
             <div className="table-responsive">
-              <table className="table table-striped table-hover">
+              <table className="table table-sm table-md table-striped table-hover">
                 <thead className="table-dark">
                   <tr>
                     {/* <th>ID</th> */}
-                    <th>Application</th>
-                    <th>Beneficiary</th>
-                    <th>Program</th>
-                    <th>Amount</th>
-                    <th>Remaining</th>
-                    <th>Status</th>
-                    <th>Sanctioned Date</th>
-                    <th>Actions</th>
+                    <th className="text-nowrap">Application</th>
+                    <th className="text-nowrap">Beneficiary</th>
+                    <th className="text-nowrap">Program</th>
+                    <th className="text-nowrap">Amount</th>
+                    <th className="text-nowrap">Remaining</th>
+                    <th className="text-nowrap">Status</th>
+                    <th className="text-nowrap">Date</th>
+                    <th className="text-nowrap">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {incentives.map((incentive) => (
                     <tr key={incentive.incentiveId}>
                       {/* <td className="fw-semibold">{incentive.incentiveId}</td> */}
-                      <td>{incentive.applicationId}</td>
-                      <td>{beneficiaryNames[incentive.beneficiaryId] || "Loading..."}</td>
-                      <td>{programNames[incentive.programId] || "Loading..."}</td>
-                      <td>₹{incentive.amount.toLocaleString()}</td>
-                      <td>₹{incentive.remainingAmount.toLocaleString()}</td>
-                      <td>
+                      <td className="text-nowrap">{incentive.applicationId}</td>
+                      <td className="text-nowrap">{beneficiaryNames[incentive.beneficiaryId] || "Loading..."}</td>
+                      <td className="text-nowrap">{programNames[incentive.programId] || "Loading..."}</td>
+                      <td className="text-nowrap">₹{incentive.amount.toLocaleString()}</td>
+                      <td className="text-nowrap">₹{incentive.remainingAmount.toLocaleString()}</td>
+                      <td className="text-nowrap">
                         <span
                           className={`badge ${
                             incentive.status === "COMPLETED"
@@ -364,7 +362,7 @@ export default function IncentivesPage() {
                           {incentive.status}
                         </span>
                       </td>
-                      <td>{incentive.sanctionedDate}</td>
+                      <td className="text-nowrap">{incentive.sanctionedDate}</td>
                       <td>
                         <ContentGate authority="DISBURSEMENT_OFFICER">
                           <button
@@ -390,13 +388,13 @@ export default function IncentivesPage() {
       {activeTab === "create" && (
         <ContentGate authority="DISBURSEMENT_OFFICER">
           <div className="card">
-            <div className="card-body">
-              <h4 className="card-title mb-3">Create New Incentive</h4>
+            <div className="card-body p-2 p-sm-3 p-md-4">
+              <h4 className="card-title mb-2 mb-md-3 fs-5 fs-md-4">Create New Incentive</h4>
               <form onSubmit={handleCreateIncentive}>
-                <div className="mb-3">
-                  <label className="form-label">Select Participant</label>
+                <div className="mb-2 mb-md-3">
+                  <label className="form-label form-label-sm">Select Participant</label>
                   <select
-                    className="form-select"
+                    className="form-select form-select-sm"
                     value={selectedParticipant}
                     onChange={(e) => setSelectedParticipant(e.target.value)}
                     required
@@ -404,17 +402,17 @@ export default function IncentivesPage() {
                     <option value="">-- Choose a participant --</option>
                     {participants.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.legalName}
+                        {p.legalName || `Participant ${p.id}`}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label">Incentive Amount</label>
+                <div className="mb-2 mb-md-3">
+                  <label className="form-label form-label-sm">Incentive Amount</label>
                   <input
                     type="number"
-                    className="form-control"
+                    className="form-control form-control-sm"
                     placeholder="Enter amount"
                     value={createAmount}
                     onChange={(e) => setCreateAmount(e.target.value)}
@@ -424,7 +422,7 @@ export default function IncentivesPage() {
                   />
                 </div>
 
-                <button type="submit" className="btn btn-success">
+                <button type="submit" className="btn btn-success btn-sm w-100 w-md-auto">
                   Create Incentive
                 </button>
               </form>
@@ -436,17 +434,17 @@ export default function IncentivesPage() {
       {/* ========== DISBURSEMENTS TAB ========== */}
       {activeTab === "disbursements" && (
         <ContentGate authority="DISBURSEMENT_OFFICER">
-          <div className="row">
+          <div className="row g-2 g-md-3 g-lg-4">
             {/* Create Disbursement */}
-            <div className="col-md-6 mb-4">
-              <div className="card">
-                <div className="card-body">
-                  <h5 className="card-title">Create Disbursement</h5>
+            <div className="col-12 col-lg-6 mb-2 mb-md-3">
+              <div className="card h-100">
+                <div className="card-body p-2 p-sm-3 p-md-4">
+                  <h5 className="card-title fs-6 fs-md-5">Create Disbursement</h5>
                   <form onSubmit={handleCreateDisbursement}>
-                    <div className="mb-3">
-                      <label className="form-label">Select Incentive</label>
+                    <div className="mb-2 mb-md-3">
+                      <label className="form-label form-label-sm">Select Incentive</label>
                       <select
-                        className="form-select"
+                        className="form-select form-select-sm"
                         value={selectedIncentiveForDisb}
                         onChange={(e) =>
                           setSelectedIncentiveForDisb(e.target.value)
@@ -458,18 +456,17 @@ export default function IncentivesPage() {
                         </option>
                         {incentives.map((inc) => (
                           <option key={inc.incentiveId} value={inc.incentiveId}>
-                            Incentive #{inc.incentiveId} (
-                            ₹{inc.remainingAmount.toLocaleString()})
+                            {beneficiaryNames[inc.beneficiaryId] || "Loading..."} - Incentive #{inc.incentiveId} (₹{inc.remainingAmount.toLocaleString()})
                           </option>
                         ))}
                       </select>
                     </div>
 
-                    <div className="mb-3">
-                      <label className="form-label">Disbursement Amount</label>
+                    <div className="mb-2 mb-md-3">
+                      <label className="form-label form-label-sm">Disbursement Amount</label>
                       <input
                         type="number"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         placeholder="Enter amount"
                         value={disbAmount}
                         onChange={(e) => setDisbAmount(e.target.value)}
@@ -479,7 +476,7 @@ export default function IncentivesPage() {
                       />
                     </div>
 
-                    <button type="submit" className="btn btn-success">
+                    <button type="submit" className="btn btn-success btn-sm w-100">
                       Create Disbursement
                     </button>
                   </form>
@@ -488,25 +485,25 @@ export default function IncentivesPage() {
             </div>
 
             {/* Disbursement History */}
-            <div className="col-md-6 mb-4">
-              <div className="card">
-                <div className="card-body">
-                  <h5 className="card-title">Disbursement History</h5>
+            <div className="col-12 col-lg-6 mb-2 mb-md-3">
+              <div className="card h-100">
+                <div className="card-body p-2 p-sm-3 p-md-4">
+                  <h5 className="card-title fs-6 fs-md-5">Disbursement History</h5>
                   {selectedIncentiveForDisb && (
-                    <p className="text-muted">
-                      Showing history for Incentive #{selectedIncentiveForDisb}
+                    <p className="text-muted small">
+                      Showing history for <strong>{beneficiaryNames[incentives.find(inc => inc.incentiveId === parseInt(selectedIncentiveForDisb))?.beneficiaryId] || "Loading..."}</strong> - Incentive #{selectedIncentiveForDisb}
                     </p>
                   )}
 
                   {disbHistory.length === 0 ? (
-                    <p className="text-muted">
+                    <p className="text-muted small">
                       {selectedIncentiveForDisb
                         ? "No disbursements found for this incentive."
                         : "Select an incentive to view history."}
                     </p>
                   ) : (
                     <div className="table-responsive">
-                      <table className="table table-sm">
+                      <table className="table table-sm table-striped">
                         <thead>
                           <tr>
                             <th>ID</th>
@@ -536,18 +533,18 @@ export default function IncentivesPage() {
               </div>
             </div>
 
-            {/* Lookup Disbursement by IDs */}
-            <div className="col-md-12 mb-4">
+            {/* Lookup Disbursement by Incentive ID */}
+            <div className="col-12 mb-2 mb-md-3">
               <div className="card">
-                <div className="card-body">
-                  <h5 className="card-title">
-                    Search Disbursement by ID
+                <div className="card-body p-2 p-sm-3 p-md-4">
+                  <h5 className="card-title fs-6 fs-md-5">
+                    Search Disbursement by Incentive
                   </h5>
-                  <div className="row">
-                    <div className="col-md-4">
+                  <div className="row g-2">
+                    <div className="col-12 col-sm-6 col-md-5">
                       <input
                         type="number"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         placeholder="Incentive ID"
                         value={disbLookupIncentiveId}
                         onChange={(e) =>
@@ -555,57 +552,55 @@ export default function IncentivesPage() {
                         }
                       />
                     </div>
-                    <div className="col-md-4">
-                      <input
-                        type="number"
-                        className="form-control"
-                        placeholder="Disbursement ID"
-                        value={disbLookupDisbId}
-                        onChange={(e) => setDisbLookupDisbId(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-4">
+                    <div className="col-12 col-sm-6 col-md-3">
                       <button
-                        className="btn btn-primary w-100"
-                        onClick={handleFetchDisbByIds}
-                        disabled={!disbLookupIncentiveId || !disbLookupDisbId}
+                        className="btn btn-primary btn-sm w-100"
+                        onClick={() => {
+                          clearToast();
+                          handleLoadDisbursementHistory(disbLookupIncentiveId);
+                        }}
+                        disabled={!disbLookupIncentiveId}
                       >
                         Search
                       </button>
                     </div>
                   </div>
 
-                  {lookedUpDisb && (
-                    <div className="mt-3 p-3 bg-light border rounded">
-                      <h6>Result:</h6>
-                      <dl className="row small">
-                        <dt className="col-sm-4">Disbursement ID:</dt>
-                        <dd className="col-sm-8">
-                          {lookedUpDisb.disbursementId}
-                        </dd>
-                        <dt className="col-sm-4">Incentive ID:</dt>
-                        <dd className="col-sm-8">
-                          {lookedUpDisb.incentiveId}
-                        </dd>
-                        <dt className="col-sm-4">Amount:</dt>
-                        <dd className="col-sm-8">
-                          ₹{lookedUpDisb.amount.toLocaleString()}
-                        </dd>
-                        <dt className="col-sm-4">Officer ID:</dt>
-                        <dd className="col-sm-8">
-                          {lookedUpDisb.officerUserId}
-                        </dd>
-                        <dt className="col-sm-4">Payment Date:</dt>
-                        <dd className="col-sm-8">
-                          {lookedUpDisb.paymentDate}
-                        </dd>
-                        <dt className="col-sm-4">Status:</dt>
-                        <dd className="col-sm-8">
-                          <span className="badge bg-success">
-                            {lookedUpDisb.status}
-                          </span>
-                        </dd>
-                      </dl>
+                  {disbHistory.length > 0 && disbLookupIncentiveId && (
+                    <div className="mt-2 mt-md-3">
+                      <h6 className="text-nowrap"><strong>{beneficiaryNames[incentives.find(inc => inc.incentiveId === parseInt(disbLookupIncentiveId))?.beneficiaryId] || "Loading..."}</strong> - Incentive #{disbLookupIncentiveId}</h6>
+                      <div className="table-responsive">
+                        <table className="table table-sm table-striped">
+                          <thead>
+                            <tr>
+                              <th>Disbursement ID</th>
+                              <th>Amount</th>
+                              <th>Payment Date</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {disbHistory.map((disb) => (
+                              <tr key={disb.disbursementId}>
+                                <td>{disb.disbursementId}</td>
+                                <td>₹{disb.amount.toLocaleString()}</td>
+                                <td>{disb.paymentDate}</td>
+                                <td>
+                                  <span className="badge bg-success">
+                                    {disb.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {disbHistory.length === 0 && disbLookupIncentiveId && (
+                    <div className="mt-2 mt-md-3 p-2 p-md-3 bg-light border rounded">
+                      <p className="text-muted mb-0 small">No disbursements found for Incentive #{disbLookupIncentiveId}</p>
                     </div>
                   )}
                 </div>

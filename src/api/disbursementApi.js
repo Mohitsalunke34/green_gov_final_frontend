@@ -11,7 +11,7 @@ export const createDisbursement = async (payload, officerUserId) => {
   return res.data;
 };
 
-// Get disbursement history by incentive ID
+
 export const getDisbursementsByIncentiveId = async (
   incentiveId,
   officerUserId
@@ -28,20 +28,13 @@ export const getDisbursementsByIncentiveId = async (
   return res.data;
 };
 
-// Get disbursement by incentive ID and disbursement ID
-export const getDisbursementByIds = async (
-  incentiveId,
-  disbursementId,
-  officerUserId
-) => {
+
+// Get disbursements by participant name
+export const getDisbursementsByParticipantName = async (participantName, officerUserId) => {
   const config = {
     headers: {
       "X-Officer-User-Id": officerUserId,
     },
   };
-  const res = await api.get(
-    `/api/disbursements/fetchByIncentiveId&disbursementId/${incentiveId}/${disbursementId}`,
-    config
-  );
-  return res.data;
+
 };

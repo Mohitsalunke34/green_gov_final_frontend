@@ -6,39 +6,39 @@ import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { getParticipantByUserId } from "../api/participantApi";
-
+ 
 export default function LoginPage() {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [isAdmin, setIsAdmin] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-
+ 
     const { login } = useAuth();
     const navigate = useNavigate();
-
+ 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError("");
         setLoading(true);
-        
+       
         try {
             const data = isAdmin
                 ? await loginAdmin(username, password)
                 : await loginUser(username, password);
-
+ 
             const token = data.token || data;
-
+ 
             let currentUserId = data.id || data.userId;
             let decodedUsername = data.username || username;
             let isOfficer = false; // 🚀 New flag to protect Officers
-
+ 
             if (typeof token === "string") {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
                     currentUserId = payload.userId || payload.id || currentUserId;
                     decodedUsername = payload.username || payload.sub || username;
-                    
+                   
                     // 🚀 Check if the token belongs to an Officer
                     const roles = payload.roles || [];
                     if (roles.includes("ROLE_OFFICER") || roles.includes("OFFICER")) {
@@ -48,23 +48,23 @@ export default function LoginPage() {
                     if (!isAdmin) throw new Error("Invalid token received from server.");
                 }
             }
-
+ 
             if (isAdmin && !currentUserId) {
-                currentUserId = "admin-sys-id"; 
+                currentUserId = "admin-sys-id";
             }
-
+ 
             if (!currentUserId && !isAdmin && !isOfficer) {
                 throw new Error("Could not extract User ID. Please try logging in again.");
             }
-
+ 
             localStorage.setItem("token", token);
             localStorage.setItem("userData", JSON.stringify({
                 id: currentUserId,
                 username: decodedUsername,
                 email: data.email || "",
-                isAdmin: isAdmin 
+                isAdmin: isAdmin
             }));
-
+ 
             // 🚀 THE FIX: If they are Admin OR Officer, skip the DB check and go to profile!
             if (isAdmin || isOfficer) {
                 login(token);
@@ -92,7 +92,7 @@ export default function LoginPage() {
             setLoading(false);
         }
     };
-
+ 
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
             <Navbar />
@@ -102,9 +102,9 @@ export default function LoginPage() {
                         <h2 className="fw-bold text-success mb-1">GreenGov</h2>
                         <p className="text-muted">Sign in to your account</p>
                     </div>
-
+ 
                     {error && <Alert type="danger" message={error} />}
-
+ 
                     <div className="card shadow-sm border-0 rounded-3 p-4">
                         <form onSubmit={handleSubmit}>
                             <div className="mb-3">
@@ -121,7 +121,7 @@ export default function LoginPage() {
                                     autoComplete="username"
                                 />
                             </div>
-
+ 
                             <div className="mb-4">
                                 <label htmlFor="password" className="form-label fw-semibold small mb-0">
                                     Password
@@ -136,7 +136,7 @@ export default function LoginPage() {
                                     autoComplete="current-password"
                                 />
                             </div>
-
+ 
                             <div className="form-check mb-4">
                                 <input
                                     className="form-check-input"
@@ -149,7 +149,7 @@ export default function LoginPage() {
                                     Sign in as Administrator
                                 </label>
                             </div>
-
+ 
                             <button
                                 type="submit"
                                 className="btn btn-success w-100"
@@ -161,16 +161,25 @@ export default function LoginPage() {
                             </button>
                         </form>
                     </div>
-
-                    <p className="text-center text-muted small mt-3">
-                        Don't have an account?{" "}
-                        <Link to="/register" className="text-success text-decoration-none fw-semibold">
-                            Register here
-                        </Link>
-                    </p>
+ 
+                    <div className="text-center text-muted small mt-3">
+                        <p className="mb-2">
+                            Don't have an account?{" "}
+                            <Link to="/register" className="text-success text-decoration-none fw-semibold">
+                                Register here
+                            </Link>
+                        </p>
+                        <p className="mb-0">
+                            Forgot your password?{" "}
+                            <Link to="/forgot-password" className="text-success text-decoration-none fw-semibold">
+                                Reset here
+                            </Link>
+                        </p>
+                    </div>
                 </div>
             </div>
             <Footer />
         </div>
     );
 }
+ 

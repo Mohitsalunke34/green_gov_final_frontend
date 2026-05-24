@@ -1,3 +1,52 @@
+// import api from "./api";
+
+
+// export const createIncentive = async (payload, officerUserId) => {
+//   const res = await api.post(
+//     "/api/incentives/create",
+//     payload,
+//     {
+//       headers: {
+//         "X-Officer-User-Id": officerUserId,
+//       },
+//     }
+//   );
+//   return res.data;
+// };
+
+
+// export const fetchAllIncentives = async () => {
+//   const res = await api.get("/api/incentives/fetchAllIncentives");
+//   return res.data;
+// };
+
+
+
+// export const getIncentiveByIdForParticipant = async (incentiveId) => {
+//   const res = await api.get(`/api/incentives/by-incentive/${incentiveId}`);
+//   return res.data;
+// };
+
+
+// export const deleteIncentive = async (incentiveId) => {
+//   const res = await api.delete(`/api/incentives/deleteById/${incentiveId}`);
+//   return res.data;
+// };
+
+
+// export const fetchParticipants = async () => {
+//   const res = await api.get("/api/incentives/participants/lookup");
+//   return res.data;
+// };
+
+
+// export const getIncentiveById = async (incentiveId) => {
+//   const res = await api.get(`/api/disbursements/by-incentive/${incentiveId}`);
+//   return res.data;
+// };
+
+
+
 import api from "./api";
 
 // ===============================

@@ -1,9 +1,9 @@
-
 import { Routes, Route } from "react-router-dom";
 import MainLayout from "./components/MainLayout";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import DashboardPage from "./pages/DashboardPage";
 import ProgramsPage from "./pages/ProgramsPage";
 import ApplicationsPage from "./pages/ApplicationsPage";
@@ -19,17 +19,26 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 import SetupProfilePage from "./pages/SetupProfilePage";
 import OfficersManagementPage from "./pages/OfficersManagementPage";
 import EnvironmentalDashboard from './pages/EnvironmentalDashboard';
- 
+
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+
 function App() {
   return (
+    <>
+    <ToastContainer position="top-right" autoClose={3000} />
+   
     <Routes>
       {/* Home page - for unauthenticated users */}
       <Route path="/" element={<HomePage />} />
- 
+
       {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
- 
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      {/* <ToastContainer position="top-right" autoClose={3000} /> */}
+
       {/* Protected routes with MainLayout */}
       <Route
         path="/dashboard"
@@ -51,18 +60,19 @@ function App() {
           </ProtectedRoute>
         }
       />
- 
+
+
       <Route
         path="/programs"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute  >
             <MainLayout>
               <ProgramsPage />
             </MainLayout>
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/applications"
         element={
@@ -73,7 +83,7 @@ function App() {
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/projects"
         element={
@@ -84,12 +94,12 @@ function App() {
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/incentives"
         element={
           <ProtectedRoute
-            requiredAuthorities={["DISBURSEMENT_OFFICER", "COMPLIANCE_OFFICER"]}
+            requiredAuthorities={["DISBURSEMENT_OFFICER"]}
             requiredRoles={["CITIZEN", "BUSINESS_OWNER"]}
           >
             <MainLayout>
@@ -98,7 +108,7 @@ function App() {
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/compliance"
         element={
@@ -119,18 +129,18 @@ function App() {
           </ProtectedRoute>
         }
       />
-     
+
       <Route
         path="/reports"
         element={
-          <ProtectedRoute requiredAuthorities={["ADMIN", "PROGRAM_MANAGER"]}>
+          <ProtectedRoute requiredAuthorities={["ADMIN", "PROGRAM_MANAGER","DISBURSEMENT_OFFICER"]}>
             <MainLayout>
               <ReportsPage />
             </MainLayout>
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/resources"
         element={
@@ -141,54 +151,49 @@ function App() {
           </ProtectedRoute>
         }
       />
- 
- 
+
+
       <Route
         path="/profile"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute >
             <MainLayout>
               <ProfilePage />
             </MainLayout>
           </ProtectedRoute>
         }
       />
- 
+
       <Route
         path="/officers"
         element={
-          <ProtectedRoute requiredAuthority="ADMIN">
+          <ProtectedRoute requiredAuthorities={["ADMIN", "ENVIRONMENT_OFFICER"]}>
             <MainLayout>
               <OfficersManagementPage />
             </MainLayout>
           </ProtectedRoute>
         }
       />
- 
-      {/* 🌿 THE MISSING ROUTE: Secure Officer Dashboard */}
+
+     
       <Route
         path="/officer-dashboard"
         element={
-          <ProtectedRoute requiredAuthority="ADMIN">
+          <ProtectedRoute requiredAuthorities={["ADMIN", "ENVIRONMENT_OFFICER"]}>
             <MainLayout>
               <EnvironmentalDashboard />
             </MainLayout>
           </ProtectedRoute>
         }
       />
- 
+      
+
       {/* Fallback */}
       <Route path="*" element={<NotFoundPage />} />
     </Routes>
+      </>
   );
+ 
 }
- 
+
 export default App;
- 
-// ----------------------------------------------------------------
- 
-// Wrap the route with proper  <ProtectedRoute
-//            requiredAuthorities={["DISBURSEMENT_OFFICER", "COMPLIANCE_OFFICER"]}
-//           requiredRoles={["CITIZEN", "BUSINESS_OWNER"]}
-//          > as per your required roles and authorities.
- 

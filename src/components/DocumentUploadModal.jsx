@@ -1,23 +1,36 @@
 import React, { useState } from 'react';
 import { uploadDocument } from '../api/participantApi';
-
+ 
 export default function DocumentUploadModal({ show, handleClose, profileId, onUploadSuccess }) {
     const [file, setFile] = useState(null);
     const [documentType, setDocumentType] = useState('ID_PROOF');
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
-
+ 
     const handleFileChange = (e) => {
         const selectedFile = e.target.files[0];
-        if (selectedFile && selectedFile.size > 20 * 1024 * 1024) {
-            setError('File size must be less than 20MB');
+       
+        if (!selectedFile) return;
+ 
+        const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+        if (!allowedTypes.includes(selectedFile.type)) {
+            setError('Invalid format. Please upload a PDF, JPG, or PNG.');
             setFile(null);
+            e.target.value = null;
             return;
         }
+ 
+        if (selectedFile.size > 20 * 1024 * 1024) {
+            setError('File size must be less than 20MB');
+            setFile(null);
+            e.target.value = null;
+            return;
+        }
+ 
         setError('');
         setFile(selectedFile);
     };
-
+ 
     const convertToBase64 = (file) => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
@@ -29,25 +42,25 @@ export default function DocumentUploadModal({ show, handleClose, profileId, onUp
             reader.onerror = (error) => reject(error);
         });
     };
-
+ 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!file) {
             setError('Please select a file');
             return;
         }
-
+ 
         try {
             setUploading(true);
             setError('');
-
+ 
             const rawBase64 = await convertToBase64(file);
-
+ 
             await uploadDocument(profileId, {
                 documentType: documentType,
                 base64Content: rawBase64
             });
-
+ 
             onUploadSuccess();
             handleClose();
             setFile(null);
@@ -58,9 +71,9 @@ export default function DocumentUploadModal({ show, handleClose, profileId, onUp
             setUploading(false);
         }
     };
-
+ 
     if (!show) return null;
-
+ 
     return (
         <div className="modal show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
             <div className="modal-dialog modal-dialog-centered">
@@ -82,6 +95,7 @@ export default function DocumentUploadModal({ show, handleClose, profileId, onUp
                                 >
                                     <option value="ID_PROOF">ID Proof</option>
                                     <option value="LICENSE">License</option>
+                                    <option value="INCOME_CERTIFICATE">Income Certificate</option>
                                 </select>
                             </div>
                             <div className="mb-3">

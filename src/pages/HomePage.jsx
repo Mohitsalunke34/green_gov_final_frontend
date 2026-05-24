@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
+
 
 const FEATURES = [
     {
@@ -125,7 +125,7 @@ export default function HomePage() {
                 </div>
             </div>
 
-            <Footer />
+           
         </div>
     );
 }
