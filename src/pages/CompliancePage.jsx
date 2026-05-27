@@ -6,27 +6,27 @@ import {
   getProgramSubjects,
   getIncentiveSubjects,
 } from "../api/complianceApi";
-
+ 
 import Loading from "../components/Loading";
 import Alert from "../components/Alert";
 import ContentGate from "../components/ContentGate";
 import ActionButton from "../components/ActionButton";
 import { useAuth } from "../auth/AuthContext";
-
+ 
 export default function CompliancePage() {
   const { getUserId } = useAuth();
-
+ 
   /* ======================= STATE ======================= */
   const [records, setRecords] = useState([]);
   const [subjects, setSubjects] = useState([]);
-
+ 
   const [loading, setLoading] = useState(false);
   const [subjectsLoading, setSubjectsLoading] = useState(false);
-
+ 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
-
+ 
   // For create form
   const [formData, setFormData] = useState({
     subjectType: "PROJECT",
@@ -35,24 +35,24 @@ export default function CompliancePage() {
     notes: "",
     evidenceURL: "",
   });
-
+ 
   // For filter
   const [filter, setFilter] = useState({
     subjectType: "",
     subjectId: "",
   });
-
+ 
   /* ======================= LOAD SUBJECTS ======================= */
-
+ 
   const loadSubjects = async (type) => {
     try {
       setSubjectsLoading(true);
       let data = [];
-
+ 
       if (type === "PROJECT") data = await getProjectSubjects();
       if (type === "PROGRAM") data = await getProgramSubjects();
       if (type === "INCENTIVE") data = await getIncentiveSubjects();
-
+ 
       setSubjects(data || []);
     } catch {
       setError("Failed to load subjects");
@@ -60,14 +60,14 @@ export default function CompliancePage() {
       setSubjectsLoading(false);
     }
   };
-
+ 
   // Load subjects for CREATE
   useEffect(() => {
-    if (!showCreateForm) return;
-    setFormData((p) => ({ ...p, subjectId: "" }));
+    if (!showCreateForm) return; // If create form is not visible, do nothing
+    setFormData((p) => ({ ...p, subjectId: "" })); // After changing subjectType the subjectId should be set to empty again
     loadSubjects(formData.subjectType);
-  }, [formData.subjectType, showCreateForm]);
-
+  }, [formData.subjectType, showCreateForm]); // If createForm is visible or formData.subjectType changes load subjects according to the formData's SubjectType
+ 
   // Load subjects for FILTER
   useEffect(() => {
     if (!filter.subjectType) {
@@ -77,30 +77,31 @@ export default function CompliancePage() {
     setFilter((p) => ({ ...p, subjectId: "" }));
     loadSubjects(filter.subjectType);
   }, [filter.subjectType]);
-
+ 
   /* ======================= HANDLERS ======================= */
-
+ 
   const handleFormChange = (e) =>
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-
+    setFormData({ ...formData, [e.target.name]: e.target.value }); //Copy everything from formData and update ONLY the field that changed
+ 
   const handleFilterChange = (e) =>
     setFilter({ ...filter, [e.target.name]: e.target.value });
-
+ 
   const handleCreate = async (e) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault(); // to prevent default reloading after submission
+    setError(""); // To remove old error and success message
     setSuccess("");
-
+ 
     if (!formData.subjectId) {
       setError("Please select a subject");
       return;
     }
-
+ 
     try {
       setLoading(true);
       await createCompliance(formData, getUserId());
       setSuccess("Compliance record created successfully");
-
+ 
+      // default state
       setFormData({
         subjectType: "PROJECT",
         subjectId: "",
@@ -108,18 +109,20 @@ export default function CompliancePage() {
         notes: "",
         evidenceURL: "",
       });
-
+ 
       setShowCreateForm(false);
       setRecords([]);
     } catch (err) {
       setError(
-        err.response?.data?.message || "Failed to create compliance record"
+        err.response?.data?.msg ||
+          err.response?.data?.message ||
+          "Failed to create compliance record",
       );
     } finally {
       setLoading(false);
     }
   };
-
+ 
   const loadCompliance = async () => {
     if (!filter.subjectType || !filter.subjectId) {
       setRecords([]);
@@ -129,7 +132,7 @@ export default function CompliancePage() {
       setLoading(true);
       const data = await getComplianceBySubject(
         filter.subjectType,
-        filter.subjectId
+        filter.subjectId,
       );
       setRecords(data || []);
       setError("");
@@ -139,18 +142,18 @@ export default function CompliancePage() {
       setLoading(false);
     }
   };
-
+ 
   const resultBadge = (result) =>
     result === "PASS"
       ? "bg-success"
       : result === "FAIL"
-      ? "bg-danger"
-      : "bg-warning text-dark";
-
+        ? "bg-danger"
+        : "bg-warning text-dark";
+ 
   if (loading && records.length === 0) return <Loading />;
-
+ 
   /* ======================= UI ======================= */
-
+ 
   return (
     <div>
       {/* Header */}
@@ -164,15 +167,14 @@ export default function CompliancePage() {
         <ActionButton
           authority="COMPLIANCE_OFFICER"
           className="btn btn-success btn-sm"
-          onClick={() => setShowCreateForm(!showCreateForm)}
-        >
+          onClick={() => setShowCreateForm(!showCreateForm)}>
           {showCreateForm ? "Cancel" : "+ Create Record"}
         </ActionButton>
       </div>
-
+ 
       {error && <Alert message={error} type="danger" />}
       {success && <Alert message={success} type="success" />}
-
+ 
       {/* ================= CREATE FORM ================= */}
       <ContentGate authority="COMPLIANCE_OFFICER">
         {showCreateForm && (
@@ -188,15 +190,14 @@ export default function CompliancePage() {
                     <select
                       className="form-select"
                       name="subjectType"
-                      value={formData.subjectType}
-                      onChange={handleFormChange}
-                    >
+                      value={formData.subjectType} //Show current value of subjectType from state
+                      onChange={handleFormChange}>
                       <option value="PROJECT">Project</option>
                       <option value="PROGRAM">Program</option>
                       <option value="INCENTIVE">Incentive</option>
                     </select>
                   </div>
-
+ 
                   <div className="col-md-8">
                     <label className="form-label">Subject</label>
                     <select
@@ -205,7 +206,7 @@ export default function CompliancePage() {
                       value={formData.subjectId}
                       onChange={handleFormChange}
                       required
-                      disabled={subjectsLoading}
+                      disabled={subjectsLoading} //Disable the dropdown when subjects are loading
                     >
                       <option value="">
                         {subjectsLoading
@@ -219,21 +220,20 @@ export default function CompliancePage() {
                       ))}
                     </select>
                   </div>
-
+ 
                   <div className="col-md-4">
                     <label className="form-label">Result</label>
                     <select
                       className="form-select"
                       name="result"
                       value={formData.result}
-                      onChange={handleFormChange}
-                    >
+                      onChange={handleFormChange}>
                       <option value="PASS">Pass</option>
                       <option value="FAIL">Fail</option>
                       <option value="PENDING">Pending</option>
                     </select>
                   </div>
-
+ 
                   <div className="col-md-8">
                     <label className="form-label">Evidence URL</label>
                     <input
@@ -244,7 +244,7 @@ export default function CompliancePage() {
                       onChange={handleFormChange}
                     />
                   </div>
-
+ 
                   <div className="col-12">
                     <label className="form-label">Notes</label>
                     <textarea
@@ -256,7 +256,7 @@ export default function CompliancePage() {
                     />
                   </div>
                 </div>
-
+ 
                 <div className="mt-3 d-flex gap-2">
                   <button className="btn btn-success btn-sm" type="submit">
                     Create
@@ -264,8 +264,7 @@ export default function CompliancePage() {
                   <button
                     type="button"
                     className="btn btn-outline-secondary btn-sm"
-                    onClick={() => setShowCreateForm(false)}
-                  >
+                    onClick={() => setShowCreateForm(false)}>
                     Cancel
                   </button>
                 </div>
@@ -274,7 +273,7 @@ export default function CompliancePage() {
           </div>
         )}
       </ContentGate>
-
+ 
       {/* ================= FILTER ================= */}
       <div className="card shadow-sm mb-4">
         <div className="card-header">Filter Compliance</div>
@@ -285,15 +284,14 @@ export default function CompliancePage() {
               className="form-select form-select-sm"
               name="subjectType"
               value={filter.subjectType}
-              onChange={handleFilterChange}
-            >
+              onChange={handleFilterChange}>
               <option value="">Select</option>
               <option value="PROJECT">Project</option>
               <option value="PROGRAM">Program</option>
               <option value="INCENTIVE">Incentive</option>
             </select>
           </div>
-
+ 
           <div className="col-md-6">
             <label className="form-label">Subject</label>
             <select
@@ -301,12 +299,9 @@ export default function CompliancePage() {
               name="subjectId"
               value={filter.subjectId}
               onChange={handleFilterChange}
-              disabled={!filter.subjectType || subjectsLoading}
-            >
+              disabled={!filter.subjectType || subjectsLoading}>
               <option value="">
-                {subjectsLoading
-                  ? "Loading subjects..."
-                  : "Select Subject"}
+                {subjectsLoading ? "Loading subjects..." : "Select Subject"}
               </option>
               {subjects.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -315,48 +310,71 @@ export default function CompliancePage() {
               ))}
             </select>
           </div>
-
+ 
           <div className="col-md-2">
             <button
               className="btn btn-success btn-sm w-100"
-              onClick={loadCompliance}
-            >
+              onClick={loadCompliance}>
               Search
             </button>
           </div>
         </div>
       </div>
-
+ 
       {/* ================= TABLE ================= */}
       <div className="card shadow-sm">
         <div className="card-header">Compliance Records</div>
         <div className="card-body p-0">
           {records.length === 0 ? (
-            <p className="text-center text-muted py-4 mb-0">
-              No records found
-            </p>
+            <p className="text-center text-muted py-4 mb-0">No records found</p>
           ) : (
             <div className="table-responsive">
               <table className="table table-hover mb-0">
                 <thead>
                   <tr>
                     <th>Subject Type</th>
-                    <th>Subject ID</th>
                     <th>Result</th>
+                    <th>Created By</th>
+                    <th>Recorded Date</th>
+                    <th>Evidence</th>
                     <th>Notes</th>
+                    <th>Audit Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {records.map((r) => (
                     <tr key={r.id}>
                       <td>{r.subjectType}</td>
-                      <td>{r.subjectId}</td>
+ 
                       <td>
                         <span className={`badge ${resultBadge(r.result)}`}>
                           {r.result}
                         </span>
                       </td>
+ 
+                      <td>{r.createdBy || "—"}</td>
+ 
+                      <td>
+                        {r.recordedDate
+                          ? new Date(r.recordedDate).toLocaleDateString()
+                          : "—"}
+                      </td>
+ 
+                      <td>
+                        {r.evidenceURL ? (
+                          <a
+                            href={r.evidenceURL}
+                            target="_blank"
+                            rel="noreferrer">
+                            View
+                          </a>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+ 
                       <td>{r.notes || "—"}</td>
+                      <td>{r.auditStatus || "_"}</td>
                     </tr>
                   ))}
                 </tbody>
