@@ -31,7 +31,7 @@ export default function LoginPage() {
  
             let currentUserId = data.id || data.userId;
             let decodedUsername = data.username || username;
-            let isOfficer = false; // 🚀 New flag to protect Officers
+            let isOfficer = false; 
  
             if (typeof token === "string") {
                 try {

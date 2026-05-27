@@ -1,76 +1,69 @@
 import api from "./api";
 
-// ── Resources ──────────────────────────────────────────────
+/* ───────────────── RESOURCES ───────────────── */
 
-// Allocate (create) a resource
-export const allocateResource = async (payload) => {
-  const res = await api.post("/api/resources/allocate", payload);
+/* ✅ Create Resource */
+export const createResource = async (payload) => {
+  const res = await api.post("/api/resources", payload);
   return res.data;
 };
 
-// Update a resource by ID
-export const updateResource = async (resourceId, payload) => {
-  const res = await api.put(`/api/resources/${resourceId}`, payload);
+/* ✅ Allocate Resource */
+export const allocateResource = async (resourceId, payload) => {
+  const res = await api.put(`/api/resources/${resourceId}/allocate`, payload);
   return res.data;
 };
 
-// Get a resource by ID
+/* ✅ Get all resources (FIXED ✅) */
+export const getAllResources = async (params = {}) => {
+  const res = await api.get("/api/resources", { params });
+  return res.data?.content || [];  // Always return ARRAY
+};
+
+/* ✅ Get resource by ID */
 export const getResourceById = async (resourceId) => {
   const res = await api.get(`/api/resources/${resourceId}`);
   return res.data;
 };
 
-// Delete a resource by ID
+/* ✅ Delete resource */
 export const deleteResource = async (resourceId) => {
   const res = await api.delete(`/api/resources/${resourceId}`);
   return res.data;
 };
 
-// Update resource status
-export const updateResourceStatus = async (resourceId, status) => {
-  const res = await api.patch(`/api/resources/${resourceId}/status?status=${status}`);
-  return res.data;
-};
 
-export const getAllResources = async () => {
-  const res = await api.get("/api/resources/get-all");
-  return res.data;
-}
+/* ───────────────── INFRASTRUCTURE ───────────────── */
 
-// ── Infrastructure ──────────────────────────────────────────
-
-// Create infrastructure
+/* ✅ Create Infrastructure */
 export const createInfrastructure = async (payload) => {
-  const res = await api.post("/api/infrastructure/create", payload);
+  const res = await api.post("/api/infrastructure", payload);
   return res.data;
 };
 
-// Get all infrastructure
-export const getAllInfrastructure = async () => {
-  const res = await api.get("/api/infrastructure/get-all");
+/* ✅ Update Capacity */
+export const updateInfrastructureCapacity = async (infraId, payload) => {
+  const res = await api.put(
+    `/api/infrastructure/${infraId}/capacity`,
+    payload
+  );
   return res.data;
 };
 
-// Get infrastructure by ID
+/* ✅ Get all infrastructure (FIXED ✅) */
+export const getAllInfrastructure = async (params = {}) => {
+  const res = await api.get("/api/infrastructure", { params });
+  return res.data?.content || [];  // Always return ARRAY
+};
+
+/* ✅ Get by ID */
 export const getInfrastructureById = async (infraId) => {
   const res = await api.get(`/api/infrastructure/${infraId}`);
   return res.data;
 };
 
-// Delete infrastructure by ID
+/* ✅ Delete */
 export const deleteInfrastructure = async (infraId) => {
   const res = await api.delete(`/api/infrastructure/${infraId}`);
-  return res.data;
-};
-
-
-export const updateInfrastructure = async (infraId, payload) => {
-  const res = await api.put(`/api/infrastructure/${infraId}`, payload);
-  return res.data;
-};
-
-
-export const updateInfrastructureStatus = async (payload) => {
-  const res = await api.patch("/api/infrastructure/status", payload);
   return res.data;
 };

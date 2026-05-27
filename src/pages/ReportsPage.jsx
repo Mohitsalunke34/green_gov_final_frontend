@@ -509,7 +509,7 @@ export default function ReportsPage() {
                             <div className="table-responsive">
                                 <table className="table table-striped table-hover">
                                     <thead className="table-success">
-                                        <tr><th>ID</th><th>Scope</th><th>Created Date</th><th>View</th></tr>
+                                        <tr><th>ID</th><th>Scope</th><th>Created Date</th></tr>
                                     </thead>
                                     <tbody>
                                         {scopeReports.map((r, idx) => (
@@ -517,14 +517,14 @@ export default function ReportsPage() {
                                                 <td className="fw-semibold">{r.reportId}</td>
                                                 <td><span className="badge bg-success">{r.scope || scopeType}</span></td>
                                                 <td>{r.generatedDate ? new Date(r.generatedDate).toLocaleDateString() : "—"}</td>
-                                                <td>
-                                                    <button
+                                                {/* <td> */}
+                                                    {/* <button
                                                         className="btn btn-sm btn-outline-success"
                                                         onClick={() => setReportById(r)}
                                                     >
                                                         View
-                                                    </button>
-                                                </td>
+                                                    </button> */}
+                                                {/* </td> */}
                                             </tr>
                                         ))}
                                     </tbody>

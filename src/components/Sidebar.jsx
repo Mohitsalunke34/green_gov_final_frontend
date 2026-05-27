@@ -45,7 +45,7 @@ export default function Sidebar() {
     {
       path: "/resources",
       label: "Resource & Infrastructure",
-      authority: "ADMIN",
+      authorities: ["ADMIN", "PROGRAM_MANAGER"],
     },
     {
       path: "/officers",

@@ -1,33 +1,28 @@
 
 import { useState, useEffect } from "react";
 
-//apis calls for incentives
 import {
   fetchAllIncentives,
   createIncentive,
   deleteIncentive,
   fetchParticipants,
-  getIncentiveById,
 } from "../api/incentiveApi";
 
-//UI components
+
 import Loading from "../components/Loading";
 import Toast from "../components/Toast";
 
-//api calls for disbursement
 import {
   createDisbursement,
   getDisbursementsByIncentiveId,
   getDisbursementByIds,
 } from "../api/disbursementApi";
 
-// Controls access based on roles/authorities in JWT claims
 import ContentGate from "../components/ContentGate";
 
-// Custom hook from Context → gives:userId,roles,auth info
 import { useAuth } from "../auth/AuthContext";
 
-// Extra APIs to fetch names
+
 import { getParticipantById } from "../api/participantApi";
 import { getProgramById } from "../api/programApi";
 
@@ -35,7 +30,6 @@ import { getProgramById } from "../api/programApi";
 
 export default function IncentivesPage() {
 
-  //This is used for API calls that require the officer's user ID 
   const { getUserId } = useAuth();
   const officerUserId = getUserId();
 
@@ -61,7 +55,6 @@ export default function IncentivesPage() {
 
 
   // DISBURSEMENT TAB
-  
   const [selectedIncentiveForDisb, setSelectedIncentiveForDisb] = useState("");
   const [disbAmount, setDisbAmount] = useState("");
   const [disbHistory, setDisbHistory] = useState([]);
@@ -80,12 +73,6 @@ export default function IncentivesPage() {
     setToastMsg("");
   };
 
-
-
-  // ===============================
-  // LOAD INCENTIVES
-  // ===============================
-  // If tab = list → fetch data
   useEffect(() => {
     if (activeTab === "list") loadIncentives();
   }, [activeTab]);
@@ -96,13 +83,13 @@ export default function IncentivesPage() {
       const data = await fetchAllIncentives();
       setIncentives(Array.isArray(data) ? data : []);
 
-      // Fetch beneficiary and program names
+      
       const newBeneficiaryNames = { ...beneficiaryNames };
       const newProgramNames = { ...programNames };
 
       if (Array.isArray(data)) {
         for (const incentive of data) {
-          // Fetch beneficiary name if not cached
+         
           if (incentive.beneficiaryId && !newBeneficiaryNames[incentive.beneficiaryId]) {
             try {
               const beneficiary = await getParticipantById(incentive.beneficiaryId);
@@ -112,7 +99,7 @@ export default function IncentivesPage() {
             }
           }
 
-          // Fetch program name if not cached
+       
           if (incentive.programId && !newProgramNames[incentive.programId]) {
             try {
               const program = await getProgramById(incentive.programId);
@@ -133,9 +120,7 @@ export default function IncentivesPage() {
     }
   };
 
-  // ===============================
-  // LOAD PARTICIPANTS WHEN CREATE TAB OPENS
-  // ===============================
+
   useEffect(() => {
     if (activeTab === "create") {
       setLoading(true);
@@ -146,9 +131,7 @@ export default function IncentivesPage() {
     }
   }, [activeTab]);
 
-  // ===============================
-  // CREATE INCENTIVE
-  // ===============================
+
   const handleCreateIncentive = async (e) => {
     e.preventDefault();
     clearToast();
@@ -183,9 +166,7 @@ export default function IncentivesPage() {
     }
   };
 
-  // ===============================
-  // DELETE INCENTIVE
-  // ===============================
+
   const handleDelete = async (incentiveId) => {
     if (!window.confirm(`Delete incentive #${incentiveId}?`)) return;
 
@@ -202,9 +183,7 @@ export default function IncentivesPage() {
     }
   };
 
-  // ===============================
-  // CREATE DISBURSEMENT
-  // ===============================
+
   const handleCreateDisbursement = async (e) => {
     e.preventDefault();
     clearToast();
@@ -231,7 +210,6 @@ export default function IncentivesPage() {
       showToast("Disbursement created successfully", "success");
       setDisbAmount("");
       setSelectedIncentiveForDisb("");
-      // Refresh disbursement history if available
       if (selectedIncentiveForDisb) {
         loadDisbursementHistory(selectedIncentiveForDisb);
       }
@@ -242,9 +220,7 @@ export default function IncentivesPage() {
     }
   };
 
-  // ===============================
-  // GET DISBURSEMENT HISTORY
-  // ===============================
+
   const loadDisbursementHistory = async (incentiveId) => {
     try {
       setLoading(true);
@@ -263,35 +239,28 @@ export default function IncentivesPage() {
     await loadDisbursementHistory(incentiveId);
   };
 
-  // ===============================
-  // GET DISBURSEMENT BY IDS
-  // ===============================
-  const handleFetchDisbByIds = async () => {
-    clearToast();
+  //   clearToast();
 
-    if (!disbLookupIncentiveId || !disbLookupDisbId) {
-      showToast("Please enter both incentive ID and disbursement ID", "danger");
-      return;
-    }
+  //   if (!disbLookupIncentiveId || !disbLookupDisbId) {
+  //     showToast("Please enter both incentive ID and disbursement ID", "danger");
+  //     return;
+  //   }
 
-    try {
-      setLoading(true);
-      const data = await getIncentiveById(
-        disbLookupIncentiveId,
-        disbLookupDisbId,
-        officerUserId
-      );
-      setLookedUpDisb(data);
-    } catch (err) {
-      showToast(err.response?.data?.message || "Disbursement not found", "danger");
-    } finally {
-      setLoading(false);
-    }
-  };
+  //   try {
+  //     setLoading(true);
+  //     const data = await getIncentiveById(
+  //       disbLookupIncentiveId,
+  //       disbLookupDisbId,
+  //       officerUserId
+  //     );
+  //     setLookedUpDisb(data);
+  //   } catch (err) {
+  //     showToast(err.response?.data?.message || "Disbursement not found", "danger");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
 
-  // ===============================
-  // RENDER UI
-  // ===============================
   return (
     <div className="p-2 p-sm-3 p-md-4">
       <Toast msg={toastMsg} type={toastType} onClose={clearToast} />
@@ -315,8 +284,7 @@ export default function IncentivesPage() {
           </li>
         ))}
       </ul>
-
-      {/* ========== LIST TAB ========== */}
+      
       {activeTab === "list" && (
         <div>
           <h4 className="mb-2 mb-md-3 fs-5 fs-md-4">All Incentives</h4>
@@ -327,7 +295,6 @@ export default function IncentivesPage() {
               <table className="table table-sm table-md table-striped table-hover">
                 <thead className="table-dark">
                   <tr>
-                    {/* <th>ID</th> */}
                     <th className="text-nowrap">Application</th>
                     <th className="text-nowrap">Beneficiary</th>
                     <th className="text-nowrap">Program</th>
@@ -341,7 +308,6 @@ export default function IncentivesPage() {
                 <tbody>
                   {incentives.map((incentive) => (
                     <tr key={incentive.incentiveId}>
-                      {/* <td className="fw-semibold">{incentive.incentiveId}</td> */}
                       <td className="text-nowrap">{incentive.applicationId}</td>
                       <td className="text-nowrap">{beneficiaryNames[incentive.beneficiaryId] || "Loading..."}</td>
                       <td className="text-nowrap">{programNames[incentive.programId] || "Loading..."}</td>
@@ -384,9 +350,8 @@ export default function IncentivesPage() {
         </div>
       )}
 
-      {/* ========== CREATE TAB ========== */}
       {activeTab === "create" && (
-        <ContentGate authority="DISBURSEMENT_OFFICER">
+         <ContentGate authority="DISBURSEMENT_OFFICER">
           <div className="card">
             <div className="card-body p-2 p-sm-3 p-md-4">
               <h4 className="card-title mb-2 mb-md-3 fs-5 fs-md-4">Create New Incentive</h4>
@@ -431,7 +396,7 @@ export default function IncentivesPage() {
         </ContentGate>
       )}
 
-      {/* ========== DISBURSEMENTS TAB ========== */}
+
       {activeTab === "disbursements" && (
         <ContentGate authority="DISBURSEMENT_OFFICER">
           <div className="row g-2 g-md-3 g-lg-4">

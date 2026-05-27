@@ -1,119 +1,153 @@
 import { useState, useEffect } from "react";
 import * as api from "../api/resourceApi";
 import { fetchAllProjects } from "../api/projectApi";
-import Loading from "../components/Loading";
-import ContentGate from "../components/ContentGate";
-import ActionButton from "../components/ActionButton";
-
-/* ✅ Toast */
-const Toast = ({ msg, type }) => {
-  if (!msg) return null;
-  return (
-    <div
-      className={`position-fixed top-0 end-0 m-3 alert alert-${type}`}
-      style={{ zIndex: 9999 }}
-    >
-      {msg}
-    </div>
-  );
-};
+import { useAuth } from "../auth/AuthContext";
+import Toast from "../components/Toast";
 
 export default function ResourcesPage() {
-  /* ───────────────── STATE ───────────────── */
   const [tab, setTab] = useState("resources");
   const [resources, setResources] = useState([]);
   const [infra, setInfra] = useState([]);
   const [projects, setProjects] = useState([]);
-
+  const [searchText, setSearchText] = useState("");
   const [selected, setSelected] = useState({});
-  const [mode, setMode] = useState(""); // add | edit | delete
-  const [section, setSection] = useState(""); // resource | infra
+  const [mode, setMode] = useState("");
+  const [section, setSection] = useState("");
   const [showModal, setShowModal] = useState(false);
-
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
-  /* ───────────────── LOAD DATA ───────────────── */
+  const itemsPerPage = 5;
+  const { decodedToken } = useAuth();
+  const userId = decodedToken?.userId;
+
+  /* ✅ LOAD */
   useEffect(() => {
-    fetchAllProjects()
-      .then(setProjects)
-      .catch(() => setError("Failed to load projects"));
+    fetchAllProjects().then(setProjects);
   }, []);
 
   useEffect(() => {
     tab === "resources" ? loadResources() : loadInfra();
   }, [tab]);
 
-  const loadResources = async () => {
-    setLoading(true);
-    try {
-      setResources(await api.getAllResources());
-    } catch {
-      setError("Failed to load resources");
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (error || success) {
+      const t = setTimeout(() => {
+        setError("");
+        setSuccess("");
+      }, 3000);
+      return () => clearTimeout(t);
     }
+  }, [error, success]);
+
+  const loadResources = async () => {
+    // const res = await api.getAllResources();
+    // setResources(res.content || []);
+    const res = await api.getAllResources();
+    setResources(res);
+
   };
 
   const loadInfra = async () => {
-    setLoading(true);
+    // const res = await api.getAllInfrastructure();
+    // setInfra(res.content || []);
+    const res = await api.getAllInfrastructure();
+setInfra(res); 
+
+  };
+
+  const openModal = async (item = {}, m, tabName) => {
+    setMode(m);
+    const sec = tabName === "resources" ? "resource" : "infra";
+    setSection(sec);
+
+    setShowModal(true);
+
     try {
-      setInfra(await api.getAllInfrastructure());
-    } catch {
-      setError("Failed to load infrastructure");
-    } finally {
-      setLoading(false);
+      if (m === "view") {
+        if (sec === "resource") {
+          const data = await api.getResourceById(item.resourceId);
+          setSelected(data);
+        } else {
+          setSelected(item);
+        }
+      } else {
+        setSelected(item);
+      }
+    } catch (err) {
+      setError("Failed to fetch details ❌");
     }
   };
 
-  /* ───────────────── MODAL ───────────────── */
-  const openModal = (item = {}, m, sec) => {
-    setSelected(item);
-    setMode(m);
-    setSection(sec);
-    setShowModal(true);
+  const validateFields = () => {
+
+    if (mode === "add") {
+      if (!selected.projectId) return "Project is required";
+      if (section === "resource" && !selected.resourceName)
+        return "Resource name is required";
+      if (section === "infra" && !selected.infrastructureName)
+        return "Infrastructure name is required";
+      if (!selected.type) return "Type is required";
+
+      if (section === "resource" && !selected.totalQuantity)
+        return "Quantity is required";
+
+      if (section === "infra" && !selected.capacity)
+        return "Capacity is required";
+    }
+
+    if (mode === "allocate") {
+      if (!selected.allocateQty)
+        return "Quantity/Capacity is required";
+    }
+
+    return null;
   };
 
-  /* ───────────────── SAVE ───────────────── */
+
+  /* ✅ CREATE */
   const handleSave = async () => {
+
+    const validationError = validateFields();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
       if (section === "resource") {
-        const payload = {
+        await api.createResource({
           projectId: Number(selected.projectId),
+          resourceName: selected.resourceName,
           type: selected.type,
-          quantity: Number(selected.quantity),
-        };
-
-        mode === "add"
-          ? await api.allocateResource(payload)
-          : await api.updateResource(selected.resourceId, payload);
-
+          totalQuantity: Number(selected.totalQuantity),
+        });
         loadResources();
       } else {
-        const payload = {
+        await api.createInfrastructure({
           projectId: Number(selected.projectId),
+          infrastructureName: selected.infrastructureName,
           type: selected.type,
           location: selected.location,
           capacity: Number(selected.capacity),
-        };
-
-        mode === "add"
-          ? await api.createInfrastructure(payload)
-          : await api.updateInfrastructure(selected.infraId, payload);
-
+        });
         loadInfra();
       }
 
-      setSuccess("Saved ✅");
-    } catch {
-      setError("Save failed ❌");
-    } finally {
-      setShowModal(false);
+      setSuccess("Created successfully ✅");
+
+      setTimeout(() => {
+        setShowModal(false);
+      }, 300);
+
+    } catch (err) {
+      setError(err?.response?.data?.message || "Something went wrong ❌");
     }
   };
 
-  /* ───────────────── DELETE ───────────────── */
+  /* ✅ DELETE */
   const handleDelete = async () => {
     try {
       section === "resource"
@@ -122,206 +156,409 @@ export default function ResourcesPage() {
 
       section === "resource" ? loadResources() : loadInfra();
       setSuccess("Deleted ✅");
-    } catch {
-      setError("Delete failed ❌");
-    } finally {
-      setShowModal(false);
+    } catch (err) {
+      setError(err?.response?.data?.message || "Cannot delete resource");
     }
+
+    setShowModal(false);
   };
 
-  /* ───────────────── STATUS ───────────────── */
-  const handleStatus = async (item, status) => {
+  /* ✅ ALLOCATE */
+  const handleAllocate = async () => {
+
+    const validationError = validateFields();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     try {
-      await api.updateResourceStatus(item.resourceId, status);
-      loadResources();
-      setSuccess("Status updated ✅");
-    } catch {
-      setError("Status update failed ❌");
+      if (section === "resource") {
+
+        await api.allocateResource(
+          selected.resourceId,
+          {
+            allocationQuantity: Number(selected.allocateQty),
+            userId: userId
+          }
+        );
+
+        loadResources();
+        setSuccess("Resource allocated ✅");
+
+      } else {
+
+        await api.updateInfrastructureCapacity(
+          selected.infraId,
+          {
+            utilizedCapacity: Number(selected.allocateQty),
+            userId: userId
+          }
+        );
+
+        loadInfra();
+        setSuccess("Capacity utilized ✅");
+      }
+
+      setTimeout(() => {
+        setShowModal(false);
+      }, 300);
+
+    } catch (err) {
+      setError(err?.response?.data?.message || "Operation failed ❌");
     }
   };
 
-  const handleInfraStatus = async (item, status) => {
-    try {
-      await api.updateInfrastructureStatus({
-        infraId: item.infraId,
-        status,
-      });
-      loadInfra();
-      setSuccess("Status updated ✅");
-    } catch {
-      setError("Status update failed ❌");
-    }
+  const getStatusStyle = (status) => {
+    if (status === "AVAILABLE") return "bg-primary";
+    if (status === "ALLOCATED") return "bg-success";
+    if (status === "ACTIVE") return "bg-success";
+    if (status === "INACTIVE") return "bg-secondary";
+    if (status === "UNDER_MAINTENANCE") return "bg-warning text-dark";
+
+    return "bg-secondary";
   };
 
-  const rows = tab === "resources" ? resources : infra;
-  const resourceStatusOptions = ["Available", "Allocated", "Depleted"];
-  const infraStatusOptions = ["Planned", "Under Construction", "Operational"];
 
-  /* ───────────────── RENDER ───────────────── */
+  const filteredRows = (tab === "resources" ? resources : infra).filter((r) => {
+    const text = searchText.toLowerCase();
+    return (
+      r.resourceName?.toLowerCase().includes(text) ||
+      r.infrastructureName?.toLowerCase().includes(text) ||
+      r.type?.toLowerCase().includes(text)
+    );
+  });
+
+  /* ✅ PAGINATION LOGIC */
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const paginatedRows = filteredRows.slice(indexOfFirstItem, indexOfLastItem);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tab, searchText]);
+
+
   return (
-    <div className="container py-4">
-      <Toast msg={error} type="danger" />
-      <Toast msg={success} type="success" />
+    <div className="container-fluid px-2 px-md-4 py-4">
+      <Toast
+        success={success}
+        error={error}
+        setSuccess={setSuccess}
+        setError={setError}
+      />
+      {/* HEADER */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-3 gap-2">
 
-      <div className="d-flex justify-content-between align-items-center mb-3">
         <h4 className="text-success mb-0">Resource & Infrastructure</h4>
 
-        <ActionButton
-          authority="PROGRAM_MANAGER"
-          className="btn btn-success btn-sm"
-          onClick={() =>
-            openModal({}, "add", tab === "resources" ? "resource" : "infra")
-          }
-        >
-          + Add
-        </ActionButton>
+        <div className="w-100 w-md-auto d-flex justify-content-end">
+          <button
+            className="btn btn-success px-3 py-2 py-md-1 px-md-3"
+            style={{ width: "100%", maxWidth: "220px" }}
+            onClick={() => openModal({}, "add", tab)}
+          >
+            + Add
+          </button>
+        </div>
+
       </div>
 
-      {/* Tabs */}
-      <div className="btn-group mb-3">
-        <button
-          className={`btn ${
-            tab === "resources" ? "btn-success" : "btn-outline-success"
-          }`}
-          onClick={() => setTab("resources")}
-        >
-          Resources
-        </button>
-        <button
-          className={`btn ${
-            tab === "infrastructure" ? "btn-success" : "btn-outline-success"
-          }`}
-          onClick={() => setTab("infrastructure")}
-        >
-          Infrastructure
-        </button>
+      <input
+        className="form-control mb-3"
+        placeholder="Search..."
+        value={searchText}
+        onChange={(e) => setSearchText(e.target.value)}
+      />
+
+      {/* TABS */}
+      <div className="mb-3">
+
+        <div className="d-flex gap-3 align-items-end border-bottom pb-1">
+
+          {/* ✅ RESOURCES TAB */}
+          <button
+            className={`px-3 py-2 border border-bottom-0 rounded-top ${tab === "resources"
+              ? "bg-light text-success fw-semibold"
+              : "bg-transparent border-0 text-muted"
+              }`}
+            style={{ marginBottom: "-1px" }}
+            onClick={() => setTab("resources")}
+          >
+            Resources
+          </button>
+
+          {/* ✅ INFRA TAB */}
+          <button
+            className={`px-3 py-2 border border-bottom-0 rounded-top ${tab === "infrastructure"
+              ? "bg-light text-success fw-semibold"
+              : "bg-transparent border-0 text-muted"
+              }`}
+            style={{ marginBottom: "-1px" }}
+            onClick={() => setTab("infrastructure")}
+          >
+            Infrastructure
+          </button>
+
+        </div>
+
       </div>
 
-      {loading && <Loading />}
 
-      {/* Table */}
-      {!loading && (
-        <table className="table table-hover">
+
+      {/* TABLE */}
+      <div className="table-responsive d-none d-md-block">
+        <table className="table table-hover align-middle text-nowrap">
+
           <thead>
             <tr>
               <th>ID</th>
-              <th>Project</th>
+              <th>Name</th>
               <th>Type</th>
-              {tab === "resources" ? (
-                <th>Quantity</th>
-              ) : (
-                <>
-                  <th>Location</th>
-                  <th>Capacity</th>
-                </>
-              )}
+              <th>{tab === "resources" ? "Quantity" : "Capacity"}</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
 
           <tbody>
-            {rows.map((item) => (
+            {paginatedRows.map((item) => (
               <tr key={item.resourceId || item.infraId}>
+
                 <td>{item.resourceId || item.infraId}</td>
-                <td>{item.projectTitle}</td>
+
+                <td>
+                  {tab === "resources"
+                    ? item.resourceName
+                    : item.infrastructureName}
+                </td>
+
                 <td>{item.type}</td>
 
-                {tab === "resources" ? (
-                  <td>{item.quantity}</td>
-                ) : (
-                  <>
-                    <td>{item.location}</td>
-                    <td>{item.capacity}</td>
-                  </>
-                )}
+                {/* ✅ CLEAN QUANTITY / CAPACITY UI */}
+                <td style={{ minWidth: "180px" }}>
+                  {tab === "resources" ? (
+                    <>
+                      <div><b>Total:</b> {item.totalQuantity}</div>
+                      <div className="text-danger">
+                        Used: {item.totalQuantity - item.availableQuantity}
+                      </div>
+                      <div className="text-success">
+                        Available: {item.availableQuantity}
+                      </div>
 
-                <td>{item.status}</td>
+                      {/* ✅ SMALL PROGRESS BAR */}
+                      <div className="progress mt-1" style={{ height: "5px" }}>
+                        <div
+                          className="progress-bar bg-success"
+                          style={{
+                            width: `${((item.totalQuantity - item.availableQuantity) /
+                              item.totalQuantity) *
+                              100
+                              }%`,
+                          }}
+                        ></div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div><b>Total:</b> {item.capacity}</div>
+                      <div className="text-danger">
+                        Used: {item.utilizedCapacity}
+                      </div>
+                      <div className="text-success">
+                        Remaining: {item.capacity - item.utilizedCapacity}
+                      </div>
 
-                <td className="d-flex gap-2">
-                  <ActionButton
-                    authority="PROGRAM_MANAGER"
-                    className="btn btn-sm btn-outline-warning"
-                    onClick={() =>
-                      openModal(
-                        item,
-                        "edit",
-                        tab === "resources" ? "resource" : "infra"
-                      )
-                    }
-                  >
-                    ✏️
-                  </ActionButton>
-
-                  <ContentGate authority="PROGRAM_MANAGER">
-                    <select
-                      className="form-select form-select-sm w-auto"
-                      onChange={(e) =>
-                        tab === "resources"
-                          ? handleStatus(item, e.target.value)
-                          : handleInfraStatus(item, e.target.value)
-                      }
-                    >
-                      <option>Status</option>
-                      {(tab === "resources"
-                        ? resourceStatusOptions
-                        : infraStatusOptions
-                      ).map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </ContentGate>
-
-                  <ActionButton
-                    authority="PROGRAM_MANAGER"
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() =>
-                      openModal(
-                        item,
-                        "delete",
-                        tab === "resources" ? "resource" : "infra"
-                      )
-                    }
-                  >
-                    🗑️
-                  </ActionButton>
+                      {/* ✅ INFRA PROGRESS */}
+                      <div className="progress mt-1" style={{ height: "5px" }}>
+                        <div
+                          className="progress-bar bg-primary"
+                          style={{
+                            width: `${(item.utilizedCapacity / item.capacity) * 100}%`,
+                          }}
+                        ></div>
+                      </div>
+                    </>
+                  )}
                 </td>
+
+                {/* ✅ STATUS */}
+                <td>
+                  <span className={`badge ${getStatusStyle(item.status)}`}>
+                    {item.status}
+                  </span>
+                </td>
+
+                {/* ✅ ACTIONS FIXED */}
+                <td>
+                  <div className="d-flex flex-wrap gap-2">
+
+                    <button className="btn btn-outline-secondary btn-sm px-2 py-1"
+                      onClick={() => openModal(item, "view", tab)}>View</button>
+
+                    {/* ✅ ALLOCATE / UTILIZE */}
+                    <button
+                      className="btn btn-outline-primary btn-sm px-2 py-1"
+                      onClick={() => openModal(item, "allocate", tab)}
+                    >
+                      {tab === "resources" ? "Allocate" : "Utilize"}
+                    </button>
+
+                    {/* ✅ DELETE */}
+                    <button className="btn btn-outline-danger btn-sm px-2 py-1"
+                      onClick={() => openModal(item, "delete", tab)}>Delete</button>
+
+                  </div>
+                </td>
+
               </tr>
             ))}
           </tbody>
-        </table>
-      )}
 
-      {/* Modal */}
+        </table>
+      </div>
+
+      <div className="d-md-none">
+
+        {paginatedRows.map((item) => (
+          <div key={item.resourceId || item.infraId}
+            className="card mb-3 shadow-sm">
+
+            <div className="card-body">
+
+              {/* TITLE */}
+              <h6 className="fw-semibold">
+                {tab === "resources"
+                  ? item.resourceName
+                  : item.infrastructureName}
+              </h6>
+
+              {/* TYPE */}
+              <div className="small text-muted mb-2">
+                Type: {item.type}
+              </div>
+
+              {/* DATA */}
+              {(tab === "resources") ? (
+                <>
+                  <div><b>Total:</b> {item.totalQuantity}</div>
+                  <div className="text-danger">
+                    Used: {item.totalQuantity - item.availableQuantity}
+                  </div>
+                  <div className="text-success">
+                    Available: {item.availableQuantity}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div><b>Total:</b> {item.capacity}</div>
+                  <div className="text-danger">
+                    Used: {item.utilizedCapacity}
+                  </div>
+                  <div className="text-success">
+                    Remaining: {item.capacity - item.utilizedCapacity}
+                  </div>
+                </>
+              )}
+
+              {/* STATUS */}
+              <div className="mt-2">
+                <span className={`badge ${getStatusStyle(item.status)}`}>
+                  {item.status}
+                </span>
+              </div>
+
+              {/* ACTION BUTTONS */}
+              <div className="d-flex flex-wrap gap-2 mt-3">
+
+                <button
+                  className="btn btn-outline-secondary btn-sm px-2 py-1"
+                  onClick={() => openModal(item, "view", tab)}
+                >
+                  View
+                </button>
+
+                <button
+                  className="btn btn-outline-primary btn-sm px-2 py-1"
+                  onClick={() => openModal(item, "allocate", tab)}
+                >
+                  {tab === "resources" ? "Allocate" : "Utilize"}
+                </button>
+
+                <button
+                  className="btn btn-outline-danger btn-sm px-2 py-1"
+                  onClick={() => openModal(item, "delete", tab)}
+                >
+                  Delete
+                </button>
+
+              </div>
+
+            </div>
+          </div>
+        ))}
+
+      </div>
+
+
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-center mt-3 gap-2">
+
+        {/* ✅ PAGE INFO */}
+        <span className="text-muted small">
+          Page {currentPage} of {Math.ceil(filteredRows.length / itemsPerPage)}
+        </span>
+
+        {/* ✅ BUTTONS */}
+        <div className="d-flex gap-2">
+
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage(prev => prev - 1)}
+          >
+            Previous
+          </button>
+
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            disabled={currentPage === Math.ceil(filteredRows.length / itemsPerPage)}
+            onClick={() => setCurrentPage(prev => prev + 1)}
+          >
+            Next
+          </button>
+
+        </div>
+      </div>
+      {/* ✅ MODAL */}
       {showModal && (
         <>
-          <div className="modal-backdrop show" />
+          <div className="modal-backdrop show"></div>
+
           <div className="modal d-block">
-            <div className="modal-dialog">
+            <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-sm modal-md">
               <div className="modal-content">
+
                 <div className="modal-header">
-                  <h6 className="mb-0">
-                    {mode.toUpperCase()} {section.toUpperCase()}
-                  </h6>
-                  <button
-                    className="btn-close"
-                    onClick={() => setShowModal(false)}
-                  />
+                  <h6>{mode.toUpperCase()}</h6>
+                  <button className="btn-close" onClick={() => setShowModal(false)}></button>
                 </div>
 
                 <div className="modal-body">
-                  {mode === "delete" ? (
+
+                  {/* ✅ DELETE */}
+                  {mode === "delete" && (
                     <p>Are you sure you want to delete?</p>
-                  ) : (
+                  )}
+
+                  {/* ✅ ADD RESOURCE FORM (UNCHANGED) */}
+                  {mode === "add" && section === "resource" && (
                     <>
-                      <select
-                        className="form-control mb-2"
+                      <select className="form-control form-control-sm mb-2 w-100"
+                        style={{ fontSize: "14px" }}
                         value={selected.projectId || ""}
                         onChange={(e) =>
-                          setSelected({
-                            ...selected,
-                            projectId: e.target.value,
-                          })
+                          setSelected({ ...selected, projectId: e.target.value })
                         }
                       >
                         <option>Select Project</option>
@@ -334,46 +571,271 @@ export default function ResourcesPage() {
 
                       <input
                         className="form-control mb-2"
-                        placeholder="Type"
+                        placeholder="Resource Name"
+                        value={selected.resourceName || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            resourceName: e.target.value,
+                          })
+                        }
+                      />
+
+                      <select className="form-control form-control-sm mb-2 w-100"
+                        style={{ fontSize: "14px" }}
                         value={selected.type || ""}
                         onChange={(e) =>
                           setSelected({ ...selected, type: e.target.value })
                         }
+                      >
+                        <option>Select Type</option>
+                        <option value="FUNDS">FUNDS</option>
+                        <option value="EQUIPMENT">EQUIPMENT</option>
+                      </select>
+
+                      <input
+                        className="form-control"
+                        placeholder="Quantity"
+                        value={selected.totalQuantity || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            totalQuantity: e.target.value,
+                          })
+                        }
+                      />
+                    </>
+                  )}
+
+                  {mode === "view" && (
+                    <div className="p-2">
+
+                      {/* ✅ TITLE */}
+                      <h5 className="text-success mb-3">
+                        {section === "resource" ? "Resource Details" : "Infrastructure Details"}
+                      </h5>
+
+                      {/* ✅ BASIC INFO CARD */}
+                      <div className="border rounded p-3 mb-3 bg-light">
+
+                        <div className="row mb-2">
+                          <div className="col-5 text-muted">ID</div>
+                          <div className="col-7 fw-semibold">
+                            {selected.resourceId || selected.infraId}
+                          </div>
+                        </div>
+
+                        <div className="row mb-2">
+                          <div className="col-5 text-muted">Project</div>
+                          <div className="col-7">{selected.projectName}</div>
+                        </div>
+
+                        <div className="row mb-2">
+                          <div className="col-5 text-muted">Name</div>
+                          <div className="col-7 fw-semibold">
+                            {selected.resourceName || selected.infrastructureName}
+                          </div>
+                        </div>
+
+                        <div className="row">
+                          <div className="col-5 text-muted">Type</div>
+                          <div className="col-7">{selected.type}</div>
+                        </div>
+
+                      </div>
+
+                      {/* ✅ QUANTITY / CAPACITY SECTION */}
+                      <div className="border rounded p-3 mb-3">
+
+                        {section === "resource" ? (
+                          <>
+                            <div className="d-flex justify-content-between mb-1">
+                              <span>Total</span>
+                              <strong>{selected.totalQuantity}</strong>
+                            </div>
+
+                            <div className="d-flex justify-content-between text-danger mb-1">
+                              <span>Used</span>
+                              <strong>
+                                {selected.totalQuantity - selected.availableQuantity}
+                              </strong>
+                            </div>
+
+                            <div className="d-flex justify-content-between text-success">
+                              <span>Available</span>
+                              <strong>{selected.availableQuantity}</strong>
+                            </div>
+
+                            {/* ✅ PROGRESS */}
+                            <div className="progress mt-2" style={{ height: "6px" }}>
+                              <div
+                                className="progress-bar bg-success"
+                                style={{
+                                  width: `${((selected.totalQuantity - selected.availableQuantity) /
+                                    selected.totalQuantity) *
+                                    100
+                                    }%`
+                                }}
+                              ></div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="d-flex justify-content-between mb-1">
+                              <span>Total Capacity</span>
+                              <strong>{selected.capacity}</strong>
+                            </div>
+
+                            <div className="d-flex justify-content-between text-danger mb-1">
+                              <span>Utilized</span>
+                              <strong>{selected.utilizedCapacity}</strong>
+                            </div>
+
+                            <div className="d-flex justify-content-between text-success">
+                              <span>Remaining</span>
+                              <strong>
+                                {selected.capacity - selected.utilizedCapacity}
+                              </strong>
+                            </div>
+
+                            {/* ✅ PROGRESS */}
+                            <div className="progress mt-2" style={{ height: "6px" }}>
+                              <div
+                                className="progress-bar bg-primary"
+                                style={{
+                                  width: `${(selected.utilizedCapacity / selected.capacity) * 100
+                                    }%`
+                                }}
+                              ></div>
+                            </div>
+                          </>
+                        )}
+
+                      </div>
+
+                      {/* ✅ STATUS + DATES */}
+                      <div className="border rounded p-3">
+
+                        <div className="mb-2">
+                          <span className="text-muted">Status:</span>{" "}
+                          <span className={`badge ${getStatusStyle(selected.status)} ms-2`}>
+                            {selected.status}
+                          </span>
+                        </div>
+
+                        <div className="mb-1">
+                          <span className="text-muted">Created:</span>{" "}
+                          {selected.createdAt
+                            ? new Date(selected.createdAt).toLocaleString()
+                            : "-"}
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+
+
+                  {/* ✅ ADD INFRA FORM (UNCHANGED) */}
+                  {mode === "add" && section === "infra" && (
+                    <>
+                      <select className="form-control form-control-sm mb-2 w-100"
+                        style={{ fontSize: "14px" }}
+                        value={selected.projectId || ""}
+                        onChange={(e) =>
+                          setSelected({ ...selected, projectId: e.target.value })
+                        }
+                      >
+                        <option>Select Project</option>
+                        {projects.map((p) => (
+                          <option key={p.projectId} value={p.projectId}>
+                            {p.title}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Infrastructure Name"
+                        value={selected.infrastructureName || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            infrastructureName: e.target.value,
+                          })
+                        }
                       />
 
-                      {section === "resource" ? (
-                        <input
-                          className="form-control"
-                          placeholder="Quantity"
-                          value={selected.quantity || ""}
-                          onChange={(e) =>
-                            setSelected({
-                              ...selected,
-                              quantity: e.target.value,
-                            })
-                          }
-                        />
-                      ) : (
+                      <select className="form-control form-control-sm mb-2 w-100"
+                        style={{ fontSize: "14px" }}
+                        value={selected.type || ""}
+                        onChange={(e) =>
+                          setSelected({ ...selected, type: e.target.value })
+                        }
+                      >
+                        <option>Select Type</option>
+                        <option value="SOLAR_PLANT">SOLAR_PLANT</option>
+                        <option value="WIND_FARM">WIND_FARM</option>
+                        <option value="RECYCLING_UNIT">RECYCLING_UNIT</option>
+                      </select>
+
+                      <input
+                        className="form-control mb-2"
+                        placeholder="Location"
+                        value={selected.location || ""}
+                        onChange={(e) =>
+                          setSelected({ ...selected, location: e.target.value })
+                        }
+                      />
+
+                      <input
+                        className="form-control"
+                        type="number"
+                        placeholder="Capacity"
+                        value={selected.capacity || ""}
+                        onChange={(e) =>
+                          setSelected({
+                            ...selected,
+                            capacity: e.target.value,
+                          })
+                        }
+                      />
+                    </>
+                  )}
+
+
+                  {mode === "allocate" && (
+                    <>
+                      {/* ✅ RESOURCE ALLOCATION */}
+                      {section === "resource" && (
                         <>
                           <input
+                            type="number"
                             className="form-control mb-2"
-                            placeholder="Location"
-                            value={selected.location || ""}
+                            placeholder="Allocation Quantity"
+                            value={selected.allocateQty || ""}
                             onChange={(e) =>
                               setSelected({
                                 ...selected,
-                                location: e.target.value,
+                                allocateQty: e.target.value,
                               })
                             }
                           />
+
+                        </>
+                      )}
+
+                      {/* ✅ ✅ INFRA UTILIZE FORM (THIS FIXES YOUR ISSUE ✅) */}
+                      {section === "infra" && (
+                        <>
                           <input
-                            className="form-control"
-                            placeholder="Capacity"
-                            value={selected.capacity || ""}
+                            type="number"
+                            className="form-control mb-2"
+                            placeholder="Utilized Capacity"
+                            value={selected.allocateQty || ""}
                             onChange={(e) =>
                               setSelected({
                                 ...selected,
-                                capacity: e.target.value,
+                                allocateQty: e.target.value,
                               })
                             }
                           />
@@ -381,9 +843,11 @@ export default function ResourcesPage() {
                       )}
                     </>
                   )}
+
                 </div>
 
                 <div className="modal-footer">
+
                   <button
                     className="btn btn-secondary"
                     onClick={() => setShowModal(false)}
@@ -391,21 +855,32 @@ export default function ResourcesPage() {
                     Cancel
                   </button>
 
-                  {mode === "delete" ? (
+                  {mode === "delete" && (
                     <button className="btn btn-danger" onClick={handleDelete}>
-                      Delete
+                      Confirm
                     </button>
-                  ) : (
+                  )}
+
+                  {mode === "add" && (
                     <button className="btn btn-success" onClick={handleSave}>
                       Save
                     </button>
                   )}
+
+                  {mode === "allocate" && (
+                    <button className="btn btn-primary" onClick={handleAllocate}>
+                      {section === "resource" ? "Allocate" : "Utilize"}
+                    </button>
+                  )}
+
                 </div>
               </div>
             </div>
           </div>
         </>
       )}
+
     </div>
   );
 }
+
